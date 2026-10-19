@@ -1,0 +1,20 @@
+{
+  "name": "fleetpulse",
+  "version": "1.0.0",
+  "description": "FleetPulse — truck fleet monitoring driver app (Capacitor)",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor-community/background-geolocation": "^1.2.19"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

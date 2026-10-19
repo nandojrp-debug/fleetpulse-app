@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <style>
+    :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+    body { margin: 0; font: 14px/1.5 system-ui, -apple-system, sans-serif; }
+    img { max-width: 100%; }
+    [hidden] { display: none !important; }
+  </style>
+<title>FleetPulse</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap">
+<style>
+  /* Layout: fleet-ops mobile shell — truck status ring row, live activity feed, map, alerts, fleet settings. Light green + black. */
+  :root {
+    --bg: #f2f6f1; --surface: #ffffff; --surface-2: #eaf0e8; --border: #e0e7dd;
+    --fg: #10140f; --fg-muted: #5a635a; --fg-faint: #949d92;
+    --accent: #18a865; --accent-soft: #e2f4ea; --accent-ink: #ffffff;
+    --ink: #14160f; --ink-fg: #ffffff;
+    --warn: #cf8613; --warn-soft: #f9edd5; --alert: #de3346; --alert-soft: #fbe5e8;
+    --shadow: 0 1px 2px rgba(16,30,16,.05), 0 6px 20px rgba(16,30,16,.06);
+    --font-display: "Archivo", system-ui, sans-serif;
+    --font-body: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d110e; --surface: #151a16; --surface-2: #1d241f; --border: #29312b;
+      --fg: #edf3ec; --fg-muted: #9ca89d; --fg-faint: #6a756b;
+      --accent: #34d17e; --accent-soft: #11301f; --accent-ink: #07130b;
+      --ink: #edf3ec; --ink-fg: #0d110e;
+      --warn: #e4a74d; --warn-soft: #332610; --alert: #ff6b78; --alert-soft: #34151a;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d110e; --surface: #151a16; --surface-2: #1d241f; --border: #29312b;
+    --fg: #edf3ec; --fg-muted: #9ca89d; --fg-faint: #6a756b;
+    --accent: #34d17e; --accent-soft: #11301f; --accent-ink: #07130b;
+    --ink: #edf3ec; --ink-fg: #0d110e;
+    --warn: #e4a74d; --warn-soft: #332610; --alert: #ff6b78; --alert-soft: #34151a;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--surface); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .app { max-width: 480px; margin: 0 auto; min-height: 100%; background: var(--bg); display: flex; flex-direction: column; position: relative; }
+
+  .topbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    padding-block: .72rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .brand { display: flex; align-items: center; gap: .45rem; font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; letter-spacing: -.03em; color: var(--fg); }
+  .brand .mark { width: 30px; height: 30px; display: grid; place-items: center; color: var(--accent); }
+  .brand .mark svg { width: 28px; height: 28px; }
+  .brand .pulse { color: var(--accent); }
+  .topbar-actions { display: flex; align-items: center; gap: .2rem; }
+  .icon-btn { width: 38px; height: 38px; border: none; background: transparent; color: var(--fg); border-radius: 50%; display: grid; place-items: center; cursor: pointer; position: relative; }
+  .icon-btn:hover { background: var(--surface-2); }
+  .icon-btn svg { width: 22px; height: 22px; }
+  .dot { position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--alert); border: 2px solid var(--surface); }
+  .lang-btn { border:1px solid var(--border); background:transparent; color:var(--fg); font-family:var(--font-body); font-weight:800; font-size:.72rem; padding:.3rem .5rem; border-radius:8px; cursor:pointer; letter-spacing:.03em; margin-right:.15rem; }
+  .lang-btn.on-ink { border-color: color-mix(in srgb, var(--ink-fg) 35%, transparent); color: var(--ink-fg); }
+
+  .trucks { display: flex; gap: .85rem; overflow-x: auto; padding-block: .8rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--surface); border-bottom: 1px solid var(--border); scrollbar-width: none; }
+  .trucks::-webkit-scrollbar { display: none; }
+  .truck { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: .3rem; width: 66px; cursor: pointer; border: none; background: transparent; color: var(--fg); font-family: var(--font-body); }
+  .truck .ring { width: 58px; height: 58px; border-radius: 50%; padding: 2.5px; background: var(--accent); display: grid; place-items: center; }
+  .truck.idle .ring { background: var(--warn); }
+  .truck.offline .ring { background: var(--border); }
+  .truck .plate { width: 100%; height: 100%; border-radius: 50%; border: 2.5px solid var(--surface); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: .82rem; color: #fff; letter-spacing: -.01em; }
+  .truck .lbl { font-size: .7rem; color: var(--fg-muted); max-width: 66px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .truck .add .plate { background: var(--surface-2); color: var(--fg-muted); }
+
+  .feed { flex: 1; padding-bottom: 88px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .card { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .card-head { display: flex; align-items: center; gap: .7rem; padding-block: .75rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .av-sm { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; flex: 0 0 auto; font-family: var(--font-display); font-weight: 800; color: #fff; font-size: .78rem; letter-spacing: -.02em; }
+  .card-head .who { min-width: 0; flex: 1; }
+  .card-head .who .nm { font-weight: 700; font-size: .92rem; display: flex; align-items: center; gap: .35rem; }
+  .card-head .who .sub { font-size: .76rem; color: var(--fg-muted); display: flex; align-items: center; gap: .3rem; }
+
+  .pill { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 700; padding: .2rem .52rem; border-radius: 7px; white-space: nowrap; }
+  .pill svg { width: 12px; height: 12px; }
+  .pill.moving, .pill.arrived { background: var(--accent-soft); color: var(--accent); }
+  .pill.idle { background: var(--warn-soft); color: var(--warn); }
+  .pill.alert { background: var(--alert-soft); color: var(--alert); }
+  .pill.offline { background: var(--surface-2); color: var(--fg-muted); }
+
+  .map { position: relative; aspect-ratio: 5 / 4; max-width: 100%; background: radial-gradient(circle at 30% 20%, rgba(24,168,101,.08), transparent 60%), var(--surface-2); overflow: hidden; }
+  .map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map-label { position: absolute; left: .7rem; bottom: .7rem; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 12px; padding: .55rem .7rem; display: flex; flex-direction: column; gap: .15rem; max-width: 82%; }
+  .map-label .addr { font-weight: 700; font-size: .85rem; }
+  .map-label .meta { font-size: .74rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+  .map-badge { position: absolute; right: .7rem; top: .7rem; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 999px; padding: .3rem .6rem; font-size: .72rem; font-weight: 700; display: flex; align-items: center; gap: .35rem; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent);} 70%{box-shadow:0 0 0 7px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
+  @media (prefers-reduced-motion: reduce){ .live-dot{animation:none;} }
+
+  .react-row { display: flex; align-items: center; gap: 1.2rem; padding-block: .6rem .4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .react-row button { border: none; background: transparent; color: var(--fg); cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: .3rem; }
+  .react-row button svg { width: 25px; height: 25px; }
+  .react-row button:hover { color: var(--accent); }
+  .react-row .spacer { flex: 1; }
+
+  .card-foot { padding-block: 0 .95rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: .85rem; }
+  .card-foot .line { margin: .12rem 0; }
+  .card-foot .line b { font-weight: 700; color: var(--fg); }
+  .card-foot .muted { color: var(--fg-muted); }
+  .card-foot .time { color: var(--fg-faint); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; margin-top: .4rem; }
+  .shift-note { display: flex; align-items: center; gap: .4rem; margin: .5rem 0 0; font-size: .75rem; color: var(--fg-faint); }
+  .shift-note svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--accent); }
+
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 55; background: var(--surface); border-top: 1px solid var(--border); display: flex; max-width: 480px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .tab { flex: 1; border: none; background: transparent; color: var(--fg-muted); padding: .7rem 0 .6rem; display: flex; flex-direction: column; align-items: center; gap: .18rem; cursor: pointer; font-family: var(--font-body); font-size: .64rem; font-weight: 700; }
+  .tab svg { width: 24px; height: 24px; }
+  .tab.active { color: var(--accent); }
+  .tab.danger { color: var(--alert); }
+
+  .fullmap { position: relative; height: calc(100vh - 54px - 88px); min-height: 440px; background: radial-gradient(circle at 60% 30%, rgba(24,168,101,.09), transparent 55%), var(--surface-2); overflow: hidden; }
+  .fullmap svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 24px rgba(0,0,0,.12); padding: .5rem max(16px, env(safe-area-inset-left,0px)) 1rem; padding-right: max(16px, env(safe-area-inset-right,0px)); }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 99px; background: var(--border); margin: .35rem auto .7rem; }
+  .sheet h3 { margin: 0 0 .5rem; font-family: var(--font-display); font-size: 1rem; font-weight: 800; }
+  .fleet-row { display: flex; align-items: center; gap: .7rem; padding: .55rem 0; border-top: 1px solid var(--border); }
+  .fleet-row:first-of-type { border-top: none; }
+  .fleet-row .who { flex: 1; min-width: 0; }
+  .fleet-row .nm { font-weight: 700; font-size: .88rem; }
+  .fleet-row .loc { font-size: .76rem; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .view-head { padding-block: 1.1rem .4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .view-head h2 { margin: 0; font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; letter-spacing: -.03em; }
+  .view-head p { margin: .2rem 0 0; color: var(--fg-muted); font-size: .85rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: .55rem; padding-block: .5rem 1rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: .7rem .6rem; }
+  .stat .v { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat .v.on { color: var(--accent); }
+  .stat .k { font-size: .68rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; margin-top: .1rem; }
+
+  .notif { display: flex; gap: .7rem; align-items: flex-start; padding-block: .8rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--border); }
+  .notif .ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex: 0 0 auto; }
+  .notif .ic svg { width: 19px; height: 19px; }
+  .notif .bd { flex: 1; min-width: 0; font-size: .85rem; }
+  .notif .bd b { font-weight: 700; }
+  .notif .bd .t { color: var(--fg-faint); font-size: .72rem; margin-top: .2rem; }
+
+  .grouplabel { padding-block: 1.1rem .3rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); font-weight: 800; }
+  .setgrp { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .setrow { display: flex; align-items: center; gap: .8rem; padding-block: .85rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-top: 1px solid var(--border); }
+  .setrow:first-child { border-top: none; }
+  .setrow .bd { flex: 1; min-width: 0; }
+  .setrow .bd .h { font-weight: 700; font-size: .9rem; }
+  .setrow .bd .d { font-size: .76rem; color: var(--fg-muted); margin-top: .1rem; }
+  .switch { width: 46px; height: 28px; border-radius: 99px; background: var(--border); position: relative; flex: 0 0 auto; cursor: pointer; border: none; transition: background .18s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .18s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { left: 21px; }
+
+  .banner { display: flex; align-items: center; gap: .6rem; margin: .85rem max(16px, env(safe-area-inset-left,0px)) 0; margin-right: max(16px, env(safe-area-inset-right,0px)); padding: .7rem .8rem; border-radius: 13px; background: var(--accent-soft); color: var(--accent); font-size: .82rem; font-weight: 700; }
+  .banner svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+  .demo-flag { text-align: center; font-size: .7rem; color: var(--fg-faint); padding: 1.2rem 1rem 1.5rem; letter-spacing: .03em; }
+
+  /* Connection status */
+  .conn-status { display:flex; align-items:center; gap:.45rem; font-size:.75rem; font-weight:700;
+    padding:.5rem max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
+    background:var(--surface-2); color:var(--fg-muted); border-bottom:1px solid var(--border); }
+  .conn-status .d { width:8px; height:8px; border-radius:50%; background:var(--fg-faint); flex:0 0 auto; }
+  .conn-status.live { color:var(--accent); background:var(--accent-soft); }
+  .conn-status.live .d { background:var(--accent); animation:pulse 2s infinite; }
+  .conn-status.err { color:var(--alert); background:var(--alert-soft); }
+  .conn-status.err .d { background:var(--alert); }
+  .conn-status .sp { flex:1; }
+  .conn-status button { border:none; background:transparent; color:inherit; font-family:var(--font-body); font-weight:800; font-size:.72rem; cursor:pointer; text-decoration:underline; padding:0; }
+
+  /* Trips / assign / playback */
+  .pad { padding-left: max(16px, env(safe-area-inset-left,0px)); padding-right: max(16px, env(safe-area-inset-right,0px)); }
+  .backbar { display:flex; align-items:center; gap:.3rem; padding:.9rem max(16px,env(safe-area-inset-left,0px)) .1rem; padding-right:max(16px,env(safe-area-inset-right,0px)); }
+  .backbar button { border:none; background:transparent; color:var(--fg-muted); font-family:var(--font-body); font-weight:700; font-size:.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:.25rem; padding:0; }
+  .backbar button svg { width:18px; height:18px; }
+
+  .trip-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1rem; margin-top: .4rem; }
+  .trip-card .top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .trip-card .tno { font-family: var(--font-display); font-weight: 800; font-size: .9rem; }
+  .trip-card.tap { cursor:pointer; }
+  .trip-sub { font-size:.78rem; color:var(--fg-muted); margin-top:.15rem; }
+  #trips-active .trip-card, #trips-done .trip-card { margin-bottom:.6rem; }
+  .trip-route { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; }
+  .trip-route .node { display: flex; flex-direction: column; align-items: center; gap: .25rem; flex: 0 0 auto; }
+  .trip-route .d { width: 11px; height: 11px; border-radius: 50%; background: var(--accent); }
+  .trip-route .d.end { background: var(--ink); }
+  .trip-route .track { flex: 1; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) 60%, var(--border) 60%); }
+  .trip-route .txt { font-size: .82rem; font-weight: 700; }
+  .trip-meta { display: flex; gap: 1.2rem; margin-top: .9rem; font-size: .8rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+  .trip-meta b { color: var(--fg); font-family: var(--font-display); font-weight: 800; }
+
+  .field { margin-bottom:.75rem; }
+  .field label { display:block; font-size:.72rem; font-weight:800; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; }
+  .field input, .field select { width:100%; font-family:var(--font-body); font-size:.95rem; color:var(--fg); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:.78rem .8rem; -webkit-appearance:none; appearance:none; }
+  .field select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23949d92' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .8rem center; padding-right:2.2rem; }
+  .field input:focus, .field select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+
+  .eta-preview { display:flex; gap:1.3rem; align-items:flex-end; background:var(--accent-soft); color:var(--accent); border-radius:14px; padding:.85rem 1rem; margin:.2rem 0 1rem; font-variant-numeric:tabular-nums; }
+  .eta-preview .col { display:flex; flex-direction:column; gap:.15rem; }
+  .eta-preview .v { font-family:var(--font-display); font-weight:800; font-size:1.3rem; line-height:1; }
+  .eta-preview .k { font-size:.62rem; text-transform:uppercase; letter-spacing:.05em; font-weight:800; opacity:.85; }
+
+  .pb-map { position:relative; aspect-ratio:4/3; max-width:100%; background: radial-gradient(circle at 40% 30%, rgba(24,168,101,.08), transparent 55%), var(--surface-2); border-bottom:1px solid var(--border); overflow:hidden; margin-top:.3rem; }
+  .pb-map svg { position:absolute; inset:0; width:100%; height:100%; }
+  .pb-controls { display:flex; align-items:center; gap:.9rem; padding:.9rem max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+  .pb-play { width:48px; height:48px; border-radius:50%; background:var(--ink); color:var(--ink-fg); border:none; display:grid; place-items:center; cursor:pointer; flex:0 0 auto; }
+  .pb-play svg { width:20px; height:20px; }
+  .pb-range { flex:1; min-width:0; accent-color:var(--accent); height:6px; }
+  .pb-time { font-variant-numeric:tabular-nums; font-size:.82rem; font-weight:800; color:var(--fg-muted); flex:0 0 auto; min-width:52px; text-align:right; }
+
+  .timeline { padding:.3rem max(16px,env(safe-area-inset-left,0px)) 1.4rem; padding-right:max(16px,env(safe-area-inset-right,0px)); }
+  .tl-item { display:flex; gap:.8rem; }
+  .tl-rail { display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:14px; }
+  .tl-dot { width:12px; height:12px; border-radius:50%; background:var(--accent); margin-top:3px; flex:0 0 auto; }
+  .tl-dot.idle { background:var(--warn); }
+  .tl-dot.end { background:var(--ink); }
+  .tl-line { width:2px; flex:1; background:var(--border); margin:3px 0; min-height:16px; }
+  .tl-bd { padding-bottom:1.1rem; }
+  .tl-item:last-child .tl-bd { padding-bottom:0; }
+  .tl-bd .h { font-weight:700; font-size:.88rem; }
+  .tl-bd .t { font-size:.76rem; color:var(--fg-muted); font-variant-numeric:tabular-nums; margin-top:.05rem; }
+
+  /* Role switcher */
+  .roleswitch { position: static; display: flex; justify-content: center; gap: 4px; background: var(--ink); padding-block: 7px; padding-left: max(16px, env(safe-area-inset-left,0px)); padding-right: max(16px, env(safe-area-inset-right,0px)); }
+  .roleswitch button { border: none; cursor: pointer; font-family: var(--font-body); font-size: .72rem; font-weight: 700; padding: .35rem .8rem; border-radius: 999px; background: transparent; color: color-mix(in srgb, var(--ink-fg) 72%, transparent); }
+  .roleswitch button.on { background: var(--ink-fg); color: var(--ink); }
+
+  /* DRIVER APP */
+  .driverwrap { display: none; flex-direction: column; min-height: 100%; }
+  body.driver .app { display: none; }
+  body.driver .driverwrap { display: flex; }
+  .drv-top { position: sticky; top: env(safe-area-inset-top,0px); z-index: 50; background: var(--ink); color: var(--ink-fg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding-block: .85rem; padding-left: max(16px, env(safe-area-inset-left,0px)); padding-right: max(16px, env(safe-area-inset-right,0px)); }
+  .drv-top .hi { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; }
+  .drv-top .right { display:flex; align-items:center; gap:.5rem; }
+  .drv-top .plate-badge { font-family: var(--font-display); font-weight: 800; font-size: .76rem; letter-spacing: .02em; background: color-mix(in srgb, var(--ink-fg) 16%, transparent); color: var(--ink-fg); padding: .3rem .55rem; border-radius: 7px; }
+
+  .drv-body { flex: 1; padding-bottom: 40px; padding-left: max(16px, env(safe-area-inset-left,0px)); padding-right: max(16px, env(safe-area-inset-right,0px)); }
+  .drvview { display: none; }
+  .drvview.active { display: block; }
+
+  .shift-hero { margin-top: 1.1rem; border-radius: 22px; padding: 1.6rem 1.2rem; text-align: center; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), var(--surface)); border: 1px solid var(--border); transition: background .3s; }
+  .shift-hero.off { background: var(--surface); }
+  .shift-hero .orb { width: 92px; height: 92px; margin: 0 auto .9rem; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); position: relative; }
+  .shift-hero.off .orb { background: var(--surface-2); color: var(--fg-faint); }
+  .shift-hero .orb svg { width: 42px; height: 42px; }
+  .shift-hero .orb::after { content:""; position:absolute; inset:-8px; border-radius:50%; border: 2px solid var(--accent); opacity:.35; animation: ring 2.4s ease-out infinite; }
+  .shift-hero.off .orb::after { display: none; }
+  @keyframes ring { 0%{transform:scale(.85);opacity:.5;} 100%{transform:scale(1.25);opacity:0;} }
+  @media (prefers-reduced-motion: reduce){ .shift-hero .orb::after{animation:none;} }
+  .shift-hero h2 { margin: 0 0 .3rem; font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; }
+  .shift-hero p { margin: 0; color: var(--fg-muted); font-size: .88rem; }
+
+  .drv-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; font-family: var(--font-body); font-weight: 700; font-size: .95rem; padding: .95rem 1rem; border-radius: 15px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--fg); margin-top: .8rem; }
+  .drv-btn svg { width: 19px; height: 19px; }
+  .drv-btn.ink { background: var(--ink); color: var(--ink-fg); border-color: transparent; }
+  .drv-btn.go { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .drv-btn.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .drv-btn.danger { background: var(--alert); color: #fff; border-color: transparent; font-size: 1.05rem; padding: 1.1rem; }
+  .drv-btn.ghost { background: transparent; }
+
+  .drv-label { margin-top: 1.4rem; margin-bottom: .5rem; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); font-weight: 800; }
+
+  .drv-info { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: .9rem 1rem; margin-bottom: .6rem; display: flex; align-items: center; gap: .7rem; }
+  .drv-info .ic { width: 40px; height: 40px; border-radius: 12px; display:grid; place-items:center; flex:0 0 auto; background: var(--accent-soft); color: var(--accent); }
+  .drv-info .ic svg { width: 20px; height: 20px; }
+  .drv-info .bd { flex: 1; min-width: 0; }
+  .drv-info .bd .h { font-weight: 700; font-size: .9rem; }
+  .drv-info .bd .d { font-size: .77rem; color: var(--fg-muted); margin-top: .1rem; }
+  .drv-info.tap { cursor: pointer; }
+
+  .request-screen { min-height: calc(100vh - 58px); display: flex; flex-direction: column; justify-content: center; gap: 1rem; text-align: center; padding-block: 2rem; }
+  .request-screen .from { display: inline-flex; align-items: center; gap: .5rem; align-self: center; background: var(--surface-2); padding: .4rem .8rem; border-radius: 999px; font-size: .82rem; font-weight: 700; }
+  .request-screen .big-ic { width: 110px; height: 110px; margin: .5rem auto 0; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .request-screen .big-ic svg { width: 52px; height: 52px; }
+  .request-screen h2 { margin: .3rem 0 0; font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; }
+  .request-screen .q { color: var(--fg-muted); font-size: .95rem; margin: 0 1rem; }
+  .request-screen .choices { display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; }
+  .request-screen .control-note { font-size: .78rem; color: var(--fg-faint); display: inline-flex; align-items: center; gap: .4rem; align-self: center; }
+  .request-screen .control-note svg { width: 14px; height: 14px; }
+
+  .drv-tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 55; background: var(--surface); border-top: 1px solid var(--border); display: none; max-width: 480px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom,0px); }
+  body.driver .drv-tabbar { display: flex; }
+
+  .toast { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%) translateY(10px); background: var(--ink); color: var(--ink-fg); padding: .7rem 1rem; border-radius: 12px; font-size: .85rem; font-weight: 700; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: all .22s; z-index: 100; max-width: 90%; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="roleswitch" role="tablist" aria-label="Demo view">
+  <button class="on" id="rs-op" onclick="setRole('operator')" data-i18n="role_op">Operator view</button>
+  <button id="rs-drv" onclick="setRole('driver')" data-i18n="role_drv">Driver view</button>
+</div>
+
+<!-- ============ OPERATOR APP ============ -->
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/><circle cx="7.5" cy="17.5" r="1.9"/><circle cx="17.5" cy="17.5" r="1.9"/></svg>
+      </span>
+      Fleet<span class="pulse">Pulse</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="lang-btn" id="lang-op" onclick="toggleLang()">FIL</button>
+      <button class="icon-btn" onclick="go('notifs')" aria-label="Alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="dot"></span>
+      </button>
+      <button class="icon-btn" onclick="go('fleet')" aria-label="Fleet settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="trucks" id="trucks"></div>
+  <div class="conn-status" id="conn-status"><span class="d"></span><span id="conn-text">Demo mode</span><span class="sp"></span><button onclick="go('fleet')" id="conn-link">Connect backend</button></div>
+
+  <main class="feed">
+    <section class="view active" id="view-home" data-view="home"></section>
+
+    <!-- MAP -->
+    <section class="view" id="view-map" data-view="map">
+      <div class="fullmap">
+        <svg class="grid" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs><pattern id="streets" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="none"/><path d="M0 30 H60 M30 0 V60" stroke="var(--border)" stroke-width="1.5"/></pattern></defs>
+          <rect width="400" height="600" fill="url(#streets)"/>
+          <path d="M-20 180 Q150 150 430 260" stroke="var(--accent)" stroke-width="7" fill="none" opacity=".35" stroke-linecap="round"/>
+          <path d="M70 -20 Q120 320 40 620" stroke="var(--accent)" stroke-width="5" fill="none" opacity=".2" stroke-linecap="round"/>
+          <circle cx="250" cy="250" r="56" fill="var(--accent)" opacity=".10"/>
+          <circle cx="250" cy="250" r="56" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 5" opacity=".6"/>
+          <g id="fullmap-pins">
+          <g><circle cx="250" cy="250" r="17" fill="var(--accent)"/><circle cx="250" cy="250" r="17" fill="none" stroke="#fff" stroke-width="3"/><text x="250" y="256" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="sans-serif">NBC</text></g>
+          <g><circle cx="140" cy="430" r="17" fill="var(--warn)"/><circle cx="140" cy="430" r="17" fill="none" stroke="#fff" stroke-width="3"/><text x="140" y="436" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="sans-serif">TXG</text></g>
+          <g><circle cx="300" cy="140" r="17" fill="var(--accent)"/><circle cx="300" cy="140" r="17" fill="none" stroke="#fff" stroke-width="3"/><text x="300" y="146" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="sans-serif">PLM</text></g>
+          </g>
+        </svg>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3 id="map-title" data-i18n="map_title">Your fleet · 4 trucks</h3>
+          <div id="fleet-sheet-list">
+          <div class="fleet-row"><div class="av-sm" style="background:#18a865">NBC</div><div class="who"><div class="nm">NBC 4521 · Ramon V.</div><div class="loc" data-i18n="map_r1">SLEX, Sta. Rosa · 68 km/h</div></div><span class="pill moving" data-i18n="pill_enroute">En route</span></div>
+          <div class="fleet-row"><div class="av-sm" style="background:#cf8613">TXG</div><div class="who"><div class="nm">TXG 8830 · Jun C.</div><div class="loc" data-i18n="map_r2">Alabang · idle 25 min</div></div><span class="pill idle" data-i18n="pill_idle">Idle</span></div>
+          <div class="fleet-row"><div class="av-sm" style="background:#18a865">PLM</div><div class="who"><div class="nm">PLM 1174 · Mark R.</div><div class="loc" data-i18n="map_r3">Clark DC · unloading</div></div><span class="pill arrived" data-i18n="pill_arrived">Arrived</span></div>
+          <div class="fleet-row"><div class="av-sm" style="background:#949d92">WYR</div><div class="who"><div class="nm">WYR 6093 · Dennis S.</div><div class="loc" data-i18n="map_r4">Signal lost · 14 min ago</div></div><span class="pill offline" data-i18n="pill_offline">Offline</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALERTS -->
+    <section class="view" id="view-notifs" data-view="notifs">
+      <div class="view-head"><h2 data-i18n="alerts_h">Alerts</h2><p data-i18n="alerts_p">Arrivals, idling, speed, and signal events</p></div>
+      <div id="notif-list"></div>
+    </section>
+
+    <!-- FLEET / SETTINGS -->
+    <section class="view" id="view-fleet" data-view="fleet">
+      <div class="view-head"><h2>NBC 4521</h2><p data-i18n="fleet_p">Ramon Villanueva · Manila–Batangas lane</p></div>
+      <div class="stats">
+        <div class="stat"><div class="v on">3</div><div class="k" data-i18n="st_active">Active</div></div>
+        <div class="stat"><div class="v">1</div><div class="k" data-i18n="st_idle">Idle</div></div>
+        <div class="stat"><div class="v">1</div><div class="k" data-i18n="st_offline">Offline</div></div>
+      </div>
+      <div class="banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span data-i18n="fleet_banner">Ramon's driver app linked on Mar 3, 2026</span>
+      </div>
+
+      <div class="grouplabel" data-i18n="g_backend">Backend connection</div>
+      <div class="pad">
+        <div class="field" style="margin-top:.4rem"><label data-i18n="f_backend">Backend URL (Cloudflare Worker)</label>
+          <input id="a-backend" placeholder="https://fleetpulse-api.xxx.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+        <div style="display:flex; gap:.5rem">
+          <button class="drv-btn go" style="margin-top:0; flex:1" onclick="connectBackend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/><path d="M4 12h11"/></svg><span data-i18n="b_connect">Go live</span></button>
+          <button class="drv-btn" style="margin-top:0; flex:0 0 auto" onclick="disconnectBackend()" data-i18n="b_demo">Demo</button>
+        </div>
+        <div class="demo-flag" style="padding:.7rem 0 .2rem; text-align:left" data-i18n="b_hint">Iwanang blanko para sa demo. Ilagay ang Worker URL para mag-live sa totoong GPS.</div>
+      </div>
+
+      <div class="grouplabel" data-i18n="g_loc">Location &amp; trips</div>
+      <div class="setgrp">
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_live_h">Live location</div><div class="d" data-i18n="s_live_d">Phone GPS shares position while on shift — works even with no load</div></div><button class="switch on" onclick="flip(this,'s_live_h')"></button></div>
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_hist_h">Trip history</div><div class="d" data-i18n="s_hist_d">Keep routes &amp; stops for 30 days</div></div><button class="switch on" onclick="flip(this,'s_hist_h')"></button></div>
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_geo_h">Geofence alerts</div><div class="d" data-i18n="s_geo_d">Notify on arrival &amp; departure at depots and drop-offs</div></div><button class="switch on" onclick="flip(this,'s_geo_h')"></button></div>
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_spd_h">Speed alerts</div><div class="d" data-i18n="s_spd_d">Flag when the truck goes over 90 km/h</div></div><button class="switch on" onclick="flip(this,'s_spd_h')"></button></div>
+      </div>
+
+      <div class="grouplabel" data-i18n="g_drv">Driver app</div>
+      <div class="setgrp">
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_photo_h">Allow photo requests</div><div class="d" data-i18n="s_photo_d">Ask for a photo (e.g. proof of delivery). The driver chooses to send or decline.</div></div><button class="switch on" onclick="flip(this,'s_photo_h')"></button></div>
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_dec_h">Driver can always decline</div><div class="d" data-i18n="s_dec_d">Can't be turned off — the driver stays in control of their camera</div></div><button class="switch on" onclick="locked()"></button></div>
+      </div>
+
+      <div class="grouplabel" data-i18n="g_trans">Transparency</div>
+      <div class="setgrp">
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_shift_h">Shift-only tracking</div><div class="d" data-i18n="s_shift_d">Location is shared only during assigned shift hours — never off-shift</div></div><button class="switch on" onclick="locked()"></button></div>
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_ind_h">Driver sees tracking indicator</div><div class="d" data-i18n="s_ind_d">The driver's phone always shows when location is active</div></div><button class="switch on" onclick="locked()"></button></div>
+        <div class="setrow"><div class="bd"><div class="h" data-i18n="s_end_h">Driver can end shift</div><div class="d" data-i18n="s_end_d">Driver can clock out anytime — you'll be notified</div></div><button class="switch on" onclick="flip(this,'s_end_h')"></button></div>
+      </div>
+      <div class="demo-flag" data-i18n="demo_fleet">Demo prototype · sample fleet data</div>
+    </section>
+
+    <!-- TRIPS -->
+    <section class="view" id="view-trips" data-view="trips">
+      <div class="view-head"><h2 data-i18n="trips_h">Trips</h2><p data-i18n="trips_p">Active runs and today's completed routes</p></div>
+      <div class="pad">
+        <button class="drv-btn ink" style="margin-top:.4rem" onclick="go('assign')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span data-i18n="trips_assign">Assign new trip</span>
+        </button>
+      </div>
+      <div class="grouplabel" data-i18n="trips_g_active">Active</div>
+      <div class="pad" id="trips-active"></div>
+      <div class="grouplabel" data-i18n="trips_g_done">Completed today</div>
+      <div class="pad" id="trips-done"></div>
+      <div class="demo-flag" data-i18n="trips_demo">Tap a completed trip to replay its route</div>
+    </section>
+
+    <!-- ASSIGN TRIP -->
+    <section class="view" id="view-assign" data-view="assign">
+      <div class="backbar"><button onclick="go('trips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> <span data-i18n="back_trips">Trips</span></button></div>
+      <div class="view-head" style="padding-top:.2rem"><h2 data-i18n="assign_h">Assign a trip</h2><p data-i18n="assign_p">Send a new run to a driver's phone</p></div>
+      <div class="pad">
+        <div class="field"><label data-i18n="f_truck">Truck &amp; driver</label>
+          <select id="a-truck">
+            <option value="NBC 4521 · Ramon V.">NBC 4521 · Ramon V.</option>
+            <option value="TXG 8830 · Jun C.">TXG 8830 · Jun C.</option>
+            <option value="PLM 1174 · Mark R.">PLM 1174 · Mark R.</option>
+            <option value="WYR 6093 · Dennis S.">WYR 6093 · Dennis S.</option>
+          </select>
+        </div>
+        <div class="field"><label data-i18n="f_from">Pick-up</label><input id="a-from" value="Manila Depot" oninput="calcEta()"></div>
+        <div class="field"><label data-i18n="f_to">Drop-off</label><input id="a-to" value="Subic" oninput="calcEta()" data-i18n-ph="f_to_ph" placeholder="e.g. Batangas, Clark, Cavite"></div>
+        <div class="field"><label data-i18n="f_cargo">Cargo (optional)</label><input id="a-cargo" data-i18n-ph="f_cargo_ph" placeholder="e.g. 12 pallets dry goods"></div>
+        <div class="field"><label data-i18n="f_dep">Departure</label><input id="a-dep" type="time" value="14:00" oninput="calcEta()"></div>
+        <div class="eta-preview">
+          <div class="col"><span class="v" id="eta-dist">110 km</span><span class="k" data-i18n="e_dist">Distance</span></div>
+          <div class="col"><span class="v" id="eta-dur">2h 22m</span><span class="k" data-i18n="e_dur">Est. drive</span></div>
+          <div class="col"><span class="v" id="eta-arr">4:22 PM</span><span class="k">ETA</span></div>
+        </div>
+        <button class="drv-btn go" style="margin-top:0" onclick="assignTrip()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/></svg>
+          <span data-i18n="assign_btn">Assign to driver</span>
+        </button>
+      </div>
+      <div class="demo-flag" data-i18n="assign_demo">ETA is estimated from the route · sample data</div>
+    </section>
+
+    <!-- ROUTE PLAYBACK -->
+    <section class="view" id="view-playback" data-view="playback">
+      <div class="backbar"><button onclick="go('trips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> <span data-i18n="back_trips">Trips</span></button></div>
+      <div class="view-head" style="padding-top:.2rem"><h2 id="pb-title">Trip #1038</h2><p id="pb-sub">PLM 1174 · Mark R. · Today</p></div>
+      <div class="pb-map">
+        <svg id="pbSvg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs><pattern id="pbgrid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M0 25H50 M25 0V50" stroke="var(--border)" stroke-width="1.3"/></pattern></defs>
+          <rect width="400" height="300" fill="url(#pbgrid)"/>
+          <path id="pbPath" d="" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+          <circle id="pbStart" r="7" fill="var(--accent)" stroke="#fff" stroke-width="2.5"/>
+          <circle id="pbEnd" r="7" fill="var(--ink)" stroke="#fff" stroke-width="2.5"/>
+          <circle id="pbMarker" r="11" fill="var(--accent)" stroke="#fff" stroke-width="3.5"/>
+        </svg>
+      </div>
+      <div class="pb-controls">
+        <button class="pb-play" id="pbPlay" onclick="pbToggle()" aria-label="Play route"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <input class="pb-range" id="pbRange" type="range" min="0" max="1000" value="0" oninput="pbScrub(this.value)" aria-label="Scrub route">
+        <span class="pb-time" id="pbTime">—</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="v" id="pb-km">95</div><div class="k" data-i18n="pb_km">Km</div></div>
+        <div class="stat"><div class="v" id="pb-dur">2h25</div><div class="k" data-i18n="pb_dur">Duration</div></div>
+        <div class="stat"><div class="v" id="pb-avg">41</div><div class="k" data-i18n="pb_avg">Avg km/h</div></div>
+      </div>
+      <div class="grouplabel" data-i18n="pb_timeline">Route timeline</div>
+      <div class="timeline" id="pb-timeline"></div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-tab="home" onclick="go('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span data-i18n="tab_feed">Feed</span></button>
+    <button class="tab" data-tab="map" onclick="go('map')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20 3 17V4l6 3 6-3 6 3v13l-6-3-6 3z"/><path d="M9 7v13M15 4v13"/></svg><span data-i18n="tab_map">Map</span></button>
+    <button class="tab" data-tab="trips" onclick="go('trips')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M12 5h7l2 2-2 2h-7"/><path d="M12 12H5l-2 2 2 2h7"/></svg><span data-i18n="tab_trips">Trips</span></button>
+    <button class="tab" data-tab="notifs" onclick="go('notifs')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span data-i18n="tab_alerts">Alerts</span></button>
+    <button class="tab" data-tab="fleet" onclick="go('fleet')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="17.5" cy="17.5" r="1.6"/></svg><span data-i18n="tab_fleet">Fleet</span></button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- ============ DRIVER APP ============ -->
+<div class="driverwrap">
+  <header class="drv-top">
+    <div class="hi" id="drv-hi">Hi, Ramon 👋</div>
+    <div class="right">
+      <button class="lang-btn on-ink" id="lang-drv" onclick="toggleLang()">FIL</button>
+      <div class="plate-badge">NBC 4521</div>
+    </div>
+  </header>
+
+  <main class="drv-body">
+    <!-- DRIVER HOME -->
+    <section class="drvview active" data-drvview="home">
+      <div class="shift-hero" id="shiftHero">
+        <div class="orb" id="shiftOrb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.35-7-10a7 7 0 0 1 14 0c0 5.65-7 10-7 10z"/><circle cx="12" cy="11" r="2.5"/></svg></div>
+        <h2 id="shiftTitle">You're on shift</h2>
+        <p id="shiftSub">Sharing your location with dispatch.</p>
+      </div>
+      <button class="drv-btn warn" id="shiftBtn" onclick="toggleShift()"></button>
+
+      <div class="drv-label" data-i18n="d_setup">Dispatch connection</div>
+      <div class="pad" style="padding-left:0;padding-right:0">
+        <div class="field"><label data-i18n="d_setup_url">Backend URL</label>
+          <input id="drv-backend" placeholder="https://fleetpulse-api.xxx.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><label data-i18n="d_setup_id">Truck / Driver ID</label>
+          <input id="drv-id" value="NBC-4521" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+        <button class="drv-btn go" style="margin-top:0" onclick="saveDriverSetup()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n="d_setup_save">Save &amp; send GPS</span></button>
+        <div class="demo-flag" id="geo-status" style="padding:.6rem 0 .2rem; text-align:left"></div>
+      </div>
+
+      <div class="drv-label" data-i18n="d_curtrip">Current trip</div>
+      <div class="trip-card">
+        <div class="top"><span class="tno">Trip #1042</span><span class="pill moving" data-i18n="pill_enroute">En route</span></div>
+        <div class="trip-route">
+          <span class="node"><span class="d"></span><span class="txt">Manila</span></span>
+          <span class="track"></span>
+          <span class="node"><span class="d end"></span><span class="txt">Batangas</span></span>
+        </div>
+        <div class="trip-meta"><span><b>42 km</b> <span data-i18n="w_left">left</span></span><span><b>~48 min</b> ETA</span><span><b>68</b> km/h</span></div>
+      </div>
+
+      <div class="drv-label" data-i18n="d_quick">Quick updates</div>
+      <button class="drv-btn go" onclick="toast(t('tst_arr'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="d_arrived">Arrived at destination</span></button>
+      <button class="drv-btn" onclick="toast(t('tst_break'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a3 3 0 0 1 0 6h-1"/><path d="M3 8h14v5a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/></svg><span data-i18n="d_break">Taking a break</span></button>
+
+      <div class="drv-label" data-i18n="d_fromdisp">From dispatch</div>
+      <div class="drv-info tap" id="newTripCard" onclick="showDrv('newtrip')">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/><circle cx="7.5" cy="17.5" r="1.9"/><circle cx="17.5" cy="17.5" r="1.9"/></svg></div>
+        <div class="bd"><div class="h" id="nt-title">New trip assigned · #1043</div><div class="d" id="nt-sub">Manila Depot → Subic · ETA 4:22 PM</div></div>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--fg-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="drv-info tap" onclick="showDrv('request')">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <div class="bd"><div class="h" data-i18n="d_photo_h">Dispatch requested a photo</div><div class="d" data-i18n="d_photo_d">Proof of delivery — you choose to send</div></div>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--fg-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+
+      <div class="drv-label" data-i18n="d_controls">Your controls</div>
+      <div class="drv-info">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <div class="bd"><div class="h" data-i18n="d_ctrl_h">Tracking only during your shift</div><div class="d" data-i18n="d_ctrl_d">Your location is never shared after you clock out. You can end your shift anytime.</div></div>
+      </div>
+      <div class="demo-flag" data-i18n="demo_driver">Demo prototype · this is the driver's phone</div>
+    </section>
+
+    <!-- DRIVER TRIP -->
+    <section class="drvview" data-drvview="trip">
+      <div class="view-head"><h2>Trip #1042</h2><p>Manila Depot → Batangas Port</p></div>
+      <div class="trip-card">
+        <div class="trip-route"><span class="node"><span class="d"></span><span class="txt">Manila</span></span><span class="track"></span><span class="node"><span class="d end"></span><span class="txt">Batangas</span></span></div>
+        <div class="trip-meta"><span><b>128 km</b> <span data-i18n="w_total">total</span></span><span><b>42 km</b> <span data-i18n="w_left">left</span></span><span><b>~48 min</b></span></div>
+      </div>
+      <div class="drv-label" data-i18n="d_stops">Route stops</div>
+      <div class="drv-info"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div><div class="bd"><div class="h">Manila Depot</div><div class="d" data-i18n="d_stop1">Departed 1:12 PM · loaded</div></div></div>
+      <div class="drv-info"><div class="ic" style="background:var(--surface-2);color:var(--fg-faint)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="bd"><div class="h">Batangas Port</div><div class="d">ETA 2:48 PM</div></div></div>
+    </section>
+
+    <!-- DRIVER PHOTO REQUEST -->
+    <section class="drvview" data-drvview="request">
+      <div class="request-screen">
+        <div class="from"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/></svg> <span data-i18n="r_from">From Dispatch · just now</span></div>
+        <div class="big-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/></svg></div>
+        <h2 data-i18n="r_h">Photo requested</h2>
+        <p class="q" data-i18n="r_q">"Please send proof of delivery when unloaded 📦"</p>
+        <div class="choices">
+          <button class="drv-btn go" onclick="replyPhoto('sent')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span data-i18n="r_send">Take &amp; send photo</span></button>
+          <button class="drv-btn" onclick="replyPhoto('later')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="r_msg">Reply with a message</span></button>
+          <button class="drv-btn ghost" onclick="replyPhoto('declined')" data-i18n="r_not">Not now</button>
+        </div>
+        <span class="control-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span data-i18n="r_note">Your camera only opens if you tap send</span></span>
+      </div>
+    </section>
+
+    <!-- DRIVER: NEW TRIP ASSIGNED -->
+    <section class="drvview" data-drvview="newtrip">
+      <div class="backbar"><button onclick="showDrv('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> <span data-i18n="back_home">Home</span></button></div>
+      <div class="view-head" style="padding-top:.2rem"><h2 data-i18n="nt_h">New trip</h2><p data-i18n="nt_p">From dispatch · just now</p></div>
+      <div class="trip-card">
+        <div class="top"><span class="tno" id="ntv-no">Trip #1043</span><span class="pill moving" data-i18n="pill_new">New</span></div>
+        <div class="trip-route"><span class="node"><span class="d"></span><span class="txt" id="ntv-from">Manila</span></span><span class="track"></span><span class="node"><span class="d end"></span><span class="txt" id="ntv-to">Subic</span></span></div>
+        <div class="trip-meta"><span><b id="ntv-km">110 km</b> <span data-i18n="w_route">route</span></span><span><b id="ntv-dur">~2h 22m</b></span><span>ETA <b id="ntv-eta">4:22 PM</b></span></div>
+      </div>
+      <button class="drv-btn go" onclick="acceptTrip()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="nt_accept">Accept &amp; start</span></button>
+      <button class="drv-btn ghost" onclick="showDrv('home')" data-i18n="nt_decline">Decline</button>
+    </section>
+
+    <!-- DRIVER HELP / BREAKDOWN -->
+    <section class="drvview" data-drvview="help">
+      <div class="request-screen">
+        <div class="big-ic" style="background:var(--alert-soft);color:var(--alert)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <h2 data-i18n="h_h">Report a problem</h2>
+        <p class="q" data-i18n="h_q">Send your exact location and alert your operator about a breakdown, accident, or emergency.</p>
+        <div class="choices">
+          <button class="drv-btn danger" onclick="toast(t('tst_breakdown'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/><path d="M12 2v3"/></svg><span data-i18n="h_report">Report breakdown</span></button>
+          <button class="drv-btn ghost" onclick="showDrv('home')" data-i18n="h_cancel">Cancel</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="drv-tabbar">
+    <button class="tab active" data-drvtab="home" onclick="showDrv('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="dt_home">Home</span></button>
+    <button class="tab" data-drvtab="trip" onclick="showDrv('trip')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20 3 17V4l6 3 6-3 6 3v13l-6-3-6 3z"/></svg><span data-i18n="dt_trip">Trip</span></button>
+    <button class="tab danger" data-drvtab="help" onclick="showDrv('help')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span data-i18n="dt_help">Help</span></button>
+  </nav>
+</div>
+
+<script>
+  // ===================== i18n =====================
+  var lang = 'en';
+  var STR = {
+    role_op:{en:'Operator view',fil:'Operator'}, role_drv:{en:'Driver view',fil:'Driver'},
+    tab_feed:{en:'Feed',fil:'Feed'}, tab_map:{en:'Map',fil:'Mapa'}, tab_trips:{en:'Trips',fil:'Biyahe'}, tab_alerts:{en:'Alerts',fil:'Alerto'}, tab_fleet:{en:'Fleet',fil:'Fleet'},
+    dt_home:{en:'Home',fil:'Home'}, dt_trip:{en:'Trip',fil:'Biyahe'}, dt_help:{en:'Help',fil:'Tulong'},
+    pill_enroute:{en:'En route',fil:'Nasa byahe'}, pill_idle:{en:'Idle',fil:'Idle'}, pill_arrived:{en:'Arrived',fil:'Dumating'}, pill_offline:{en:'Offline',fil:'Walang signal'}, pill_new:{en:'New',fil:'Bago'},
+    map_title:{en:'Your fleet · 4 trucks',fil:'Ang iyong fleet · 4 na truck'},
+    map_r1:{en:'SLEX, Sta. Rosa · 68 km/h',fil:'SLEX, Sta. Rosa · 68 km/h'},
+    map_r2:{en:'Alabang · idle 25 min',fil:'Alabang · naka-idle 25 min'},
+    map_r3:{en:'Clark DC · unloading',fil:'Clark DC · nagba-baba'},
+    map_r4:{en:'Signal lost · 14 min ago',fil:'Nawalan ng signal · 14 min'},
+    alerts_h:{en:'Alerts',fil:'Alerto'}, alerts_p:{en:'Arrivals, idling, speed, and signal events',fil:'Mga pagdating, idle, bilis, at signal'},
+    fleet_p:{en:'Ramon Villanueva · Manila–Batangas lane',fil:'Ramon Villanueva · ruta Manila–Batangas'},
+    st_active:{en:'Active',fil:'Aktibo'}, st_idle:{en:'Idle',fil:'Idle'}, st_offline:{en:'Offline',fil:'Offline'},
+    fleet_banner:{en:"Ramon's driver app linked on Mar 3, 2026",fil:'Na-link ang driver app ni Ramon noong Mar 3, 2026'},
+    g_loc:{en:'Location & trips',fil:'Lokasyon at biyahe'}, g_drv:{en:'Driver app',fil:'Driver app'}, g_trans:{en:'Transparency',fil:'Transparency'},
+    s_live_h:{en:'Live location',fil:'Live location'}, s_live_d:{en:'Phone GPS shares position while on shift — works even with no load',fil:'Nagsha-share ng lokasyon ang phone GPS habang naka-shift — gumagana kahit walang kargada'},
+    s_hist_h:{en:'Trip history',fil:'Trip history'}, s_hist_d:{en:'Keep routes & stops for 30 days',fil:'Itago ang ruta at hinto sa loob ng 30 araw'},
+    s_geo_h:{en:'Geofence alerts',fil:'Geofence alerts'}, s_geo_d:{en:'Notify on arrival & departure at depots and drop-offs',fil:'Mag-abiso sa pagdating at pag-alis sa mga depot at drop-off'},
+    s_spd_h:{en:'Speed alerts',fil:'Speed alerts'}, s_spd_d:{en:'Flag when the truck goes over 90 km/h',fil:'Mag-flag kapag lumampas sa 90 km/h ang truck'},
+    s_photo_h:{en:'Allow photo requests',fil:'Payagan ang photo request'}, s_photo_d:{en:'Ask for a photo (e.g. proof of delivery). The driver chooses to send or decline.',fil:'Humiling ng photo (hal. proof of delivery). Ang driver ang pipili kung magpapadala o hindi.'},
+    s_dec_h:{en:'Driver can always decline',fil:'Lagi pwedeng tanggihan ng driver'}, s_dec_d:{en:"Can't be turned off — the driver stays in control of their camera",fil:'Hindi pwedeng patayin — ang driver ang may kontrol ng kanyang camera'},
+    s_shift_h:{en:'Shift-only tracking',fil:'Tracking habang shift lang'}, s_shift_d:{en:'Location is shared only during assigned shift hours — never off-shift',fil:'Naka-share lang ang lokasyon tuwing naka-shift — hindi kapag off-shift'},
+    s_ind_h:{en:'Driver sees tracking indicator',fil:'May nakikitang indicator ang driver'}, s_ind_d:{en:"The driver's phone always shows when location is active",fil:'Palaging ipinapakita ng phone ng driver kapag aktibo ang lokasyon'},
+    s_end_h:{en:'Driver can end shift',fil:'Pwedeng tapusin ng driver ang shift'}, s_end_d:{en:"Driver can clock out anytime — you'll be notified",fil:'Pwedeng mag-clock out ang driver anumang oras — maa-abisuhan ka'},
+    demo_fleet:{en:'Demo prototype · sample fleet data',fil:'Demo prototype · sample na data ng fleet'},
+    g_backend:{en:'Backend connection',fil:'Koneksyon sa backend'}, f_backend:{en:'Backend URL (Cloudflare Worker)',fil:'Backend URL (Cloudflare Worker)'},
+    b_connect:{en:'Go live',fil:'Mag-live'}, b_demo:{en:'Demo',fil:'Demo'},
+    b_hint:{en:'Leave blank for demo. Paste your Worker URL to go live with real GPS.',fil:'Iwanang blanko para sa demo. Ilagay ang Worker URL para mag-live sa totoong GPS.'},
+    conn_demo:{en:'Demo mode · sample data',fil:'Demo mode · sample na data'}, conn_live:{en:'Live · connected to backend',fil:'Live · nakakonekta sa backend'},
+    conn_connecting:{en:'Connecting…',fil:'Kumokonekta…'}, conn_err:{en:'Backend unreachable · showing demo',fil:'Di maabot ang backend · demo muna'},
+    conn_link:{en:'Connect backend',fil:'Ikonekta'}, conn_waiting:{en:'Live · waiting for first GPS ping',fil:'Live · hinihintay ang unang GPS'},
+    trips_h:{en:'Trips',fil:'Biyahe'}, trips_p:{en:"Active runs and today's completed routes",fil:'Mga aktibong biyahe at tapos nang ruta ngayon'},
+    trips_assign:{en:'Assign new trip',fil:'Mag-assign ng biyahe'}, trips_g_active:{en:'Active',fil:'Aktibo'}, trips_g_done:{en:'Completed today',fil:'Tapos ngayong araw'},
+    trips_demo:{en:'Tap a completed trip to replay its route',fil:'I-tap ang tapos na biyahe para i-replay ang ruta'},
+    back_trips:{en:'Trips',fil:'Biyahe'}, back_home:{en:'Home',fil:'Home'},
+    assign_h:{en:'Assign a trip',fil:'Mag-assign ng biyahe'}, assign_p:{en:"Send a new run to a driver's phone",fil:'Magpadala ng bagong biyahe sa phone ng driver'},
+    f_truck:{en:'Truck & driver',fil:'Truck at driver'}, f_from:{en:'Pick-up',fil:'Pick-up'}, f_to:{en:'Drop-off',fil:'Drop-off'}, f_to_ph:{en:'e.g. Batangas, Clark, Cavite',fil:'hal. Batangas, Clark, Cavite'},
+    f_cargo:{en:'Cargo (optional)',fil:'Kargada (opsyonal)'}, f_cargo_ph:{en:'e.g. 12 pallets dry goods',fil:'hal. 12 pallets dry goods'}, f_dep:{en:'Departure',fil:'Oras ng alis'},
+    e_dist:{en:'Distance',fil:'Distansya'}, e_dur:{en:'Est. drive',fil:'Tantyang biyahe'},
+    assign_btn:{en:'Assign to driver',fil:'I-assign sa driver'}, assign_demo:{en:'ETA is estimated from the route · sample data',fil:'Tinatantya ang ETA base sa ruta · sample data'},
+    pb_km:{en:'Km',fil:'Km'}, pb_dur:{en:'Duration',fil:'Tagal'}, pb_avg:{en:'Avg km/h',fil:'Avg km/h'}, pb_timeline:{en:'Route timeline',fil:'Timeline ng ruta'}, today:{en:'Today',fil:'Ngayon'},
+    // driver
+    d_hi:{en:'Hi, Ramon 👋',fil:'Kumusta, Ramon 👋'},
+    d_curtrip:{en:'Current trip',fil:'Kasalukuyang biyahe'}, d_quick:{en:'Quick updates',fil:'Mabilis na update'},
+    d_setup:{en:'Dispatch connection',fil:'Koneksyon sa dispatch'}, d_setup_url:{en:'Backend URL',fil:'Backend URL'}, d_setup_id:{en:'Truck / Driver ID',fil:'Truck / Driver ID'}, d_setup_save:{en:'Save & send GPS',fil:'I-save at magpadala ng GPS'},
+    geo_off:{en:'Enter the backend URL + ID, then turn on your shift to start sending GPS.',fil:'Ilagay ang backend URL + ID, tapos i-on ang shift para magsimulang magpadala ng GPS.'},
+    geo_waiting:{en:'On shift · getting your location…',fil:'Naka-shift · kinukuha ang lokasyon…'},
+    geo_sending:{en:'Live · sending GPS to dispatch',fil:'Live · nagpapadala ng GPS sa dispatch'},
+    geo_denied:{en:'Location blocked. Allow location for this site in your browser, then reload.',fil:'Naka-block ang lokasyon. Payagan ang location sa browser, tapos i-reload.'},
+    geo_nourl:{en:'Saved. Turn on your shift to start sending GPS.',fil:'Na-save. I-on ang shift para magsimulang magpadala ng GPS.'},
+    geo_offshift:{en:'Off shift · not sharing location.',fil:'Off shift · hindi nagsha-share ng lokasyon.'},
+    geo_unsupported:{en:'This phone/browser has no GPS support.',fil:'Walang GPS support ang phone/browser na ito.'},
+    d_arrived:{en:'Arrived at destination',fil:'Dumating sa destinasyon'}, d_break:{en:'Taking a break',fil:'Nagpapahinga'},
+    d_fromdisp:{en:'From dispatch',fil:'Mula sa dispatch'},
+    d_photo_h:{en:'Dispatch requested a photo',fil:'Humiling ng photo ang dispatch'}, d_photo_d:{en:'Proof of delivery — you choose to send',fil:'Proof of delivery — ikaw ang pipili kung magpapadala'},
+    d_controls:{en:'Your controls',fil:'Mga kontrol mo'},
+    d_ctrl_h:{en:'Tracking only during your shift',fil:'Tracking habang naka-shift ka lang'}, d_ctrl_d:{en:'Your location is never shared after you clock out. You can end your shift anytime.',fil:'Hindi na naka-share ang lokasyon mo pagkatapos mag-clock out. Pwede mong tapusin ang shift anumang oras.'},
+    demo_driver:{en:"Demo prototype · this is the driver's phone",fil:'Demo prototype · ito ang phone ng driver'},
+    w_left:{en:'left',fil:'natitira'}, w_total:{en:'total',fil:'total'}, w_route:{en:'route',fil:'ruta'},
+    d_stops:{en:'Route stops',fil:'Mga hinto sa ruta'}, d_stop1:{en:'Departed 1:12 PM · loaded',fil:'Umalis 1:12 PM · may kargada'},
+    r_from:{en:'From Dispatch · just now',fil:'Mula sa Dispatch · ngayon lang'}, r_h:{en:'Photo requested',fil:'Humiling ng photo'},
+    r_q:{en:'"Please send proof of delivery when unloaded 📦"',fil:'"Pakipadala ang proof of delivery kapag naibaba na 📦"'},
+    r_send:{en:'Take & send photo',fil:'Kumuha at ipadala'}, r_msg:{en:'Reply with a message',fil:'Sumagot gamit ang mensahe'}, r_not:{en:'Not now',fil:'Hindi muna'},
+    r_note:{en:'Your camera only opens if you tap send',fil:'Bubukas lang ang camera kapag pinindot mong ipadala'},
+    nt_h:{en:'New trip',fil:'Bagong biyahe'}, nt_p:{en:'From dispatch · just now',fil:'Mula sa dispatch · ngayon lang'},
+    nt_accept:{en:'Accept & start',fil:'Tanggapin at simulan'}, nt_decline:{en:'Decline',fil:'Tanggihan'},
+    newTripAssigned:{en:'New trip assigned · ',fil:'Bagong biyahe · '},
+    h_h:{en:'Report a problem',fil:'Mag-report ng problema'}, h_q:{en:'Send your exact location and alert your operator about a breakdown, accident, or emergency.',fil:'Ipadala ang eksaktong lokasyon at i-alerto ang operator tungkol sa sira, aksidente, o emergency.'},
+    h_report:{en:'Report breakdown',fil:'I-report ang sira'}, h_cancel:{en:'Cancel',fil:'Kanselahin'},
+    shift_on_t:{en:"You're on shift",fil:'Naka-shift ka'}, shift_on_s:{en:'Sharing your location with dispatch.',fil:'Nakabahagi ang iyong lokasyon sa dispatch.'},
+    shift_off_t:{en:'Shift ended',fil:'Tapos na ang shift'}, shift_off_s:{en:'Location sharing is off. Your operator was notified.',fil:'Naka-off ang location sharing. Na-abisuhan ang iyong operator.'},
+    shift_btn_end:{en:'End shift',fil:'Tapusin ang shift'}, shift_btn_start:{en:'Start shift',fil:'Simulan ang shift'},
+    // toasts & misc
+    live:{en:'Live',fil:'Live'}, snapshot:{en:'Snapshot',fil:'Snapshot'}, replay:{en:'▶ Replay route',fil:'▶ I-replay ang ruta'}, completed:{en:'Completed',fil:'Tapos'}, no_active:{en:'No active trips.',fil:'Walang aktibong biyahe.'},
+    tst_addtruck:{en:'Add a truck: your driver installs the FleetPulse Driver app and links the plate.',fil:'Magdagdag ng truck: i-install ng driver ang FleetPulse Driver app at i-link ang plaka.'},
+    tst_msg:{en:'Message sent to ',fil:'Naipadala ang mensahe kay '}, tst_call:{en:'Calling ',fil:'Tinatawagan si '}, tst_savelog:{en:'Trip saved to log',fil:'Na-save ang biyahe sa log'},
+    tst_locked:{en:"This protection can't be turned off — it keeps tracking fair and transparent.",fil:'Hindi pwedeng patayin ito — pinapanatili nitong patas at bukas ang tracking.'},
+    tst_on:{en:' turned on',fil:' na-on'}, tst_off:{en:' turned off',fil:' na-off'},
+    tst_arr:{en:'Sent "Arrived at destination ✓" to dispatch',fil:'Naipadala ang "Dumating sa destinasyon ✓" sa dispatch'},
+    tst_break:{en:'Sent "Taking a break ☕" to dispatch',fil:'Naipadala ang "Nagpapahinga ☕" sa dispatch'},
+    tst_breakdown:{en:'🚨 Breakdown reported. Your operator has your location.',fil:'🚨 Na-report ang sira. Nasa operator na ang iyong lokasyon.'},
+    tst_assigned:{en:'assigned to',fil:'na-assign kay'},
+    tst_photo_sent:{en:'📷 Proof of delivery sent to dispatch.',fil:'📷 Naipadala ang proof of delivery sa dispatch.'},
+    tst_photo_later:{en:'💬 Message sent: "Unloading now, photo in 5 min."',fil:'💬 Mensahe: "Nagba-baba na, photo in 5 min."'},
+    tst_photo_dec:{en:'Declined. Dispatch just sees that you got the request.',fil:'Tinanggihan. Makikita lang ng dispatch na natanggap mo ang request.'},
+    tst_accept:{en:'Trip accepted · navigation started 🚚',fil:'Tinanggap ang biyahe · nagsimula ang navigation 🚚'},
+    lbl_assigned:{en:'Assigned',fil:'Na-assign'}
+  };
+  function t(k){ var s=STR[k]; return s ? (s[lang]||s.en) : k; }
+  function L(o){ return o ? (o[lang]||o.en) : ''; }
+
+  // ===================== Data =====================
+  var trucks = [
+    { plate:'NBC', driver:'Ramon V.', color:'#18a865', status:'moving' },
+    { plate:'TXG', driver:'Jun C.', color:'#cf8613', status:'idle' },
+    { plate:'PLM', driver:'Mark R.', color:'#18a865', status:'arrived' },
+    { plate:'WYR', driver:'Dennis S.', color:'#949d92', status:'offline' }
+  ];
+
+  var feed = [
+    { plate:'NBC', full:'NBC 4521', driver:'Ramon Villanueva', color:'#18a865', live:true, status:'moving',
+      statusLabel:{en:'En route',fil:'Nasa byahe'}, pin:[250,210], addr:'SLEX · near Sta. Rosa',
+      meta:{en:'68 km/h · 42 km to Batangas Port',fil:'68 km/h · 42 km papuntang Batangas Port'},
+      headline:{en:'is heading to Batangas Port',fil:'papunta sa Batangas Port'},
+      detail:{en:'Departed Manila Depot at 1:12 PM on Trip #1042.',fil:'Umalis sa Manila Depot nang 1:12 PM · Trip #1042.'},
+      note:{en:"Sharing on during Ramon's shift",fil:'Naka-share ang lokasyon habang naka-shift si Ramon'},
+      time:{en:'2 minutes ago',fil:'2 min ang nakaraan'} },
+    { plate:'TXG', full:'TXG 8830', driver:'Jun Castro', color:'#cf8613', live:true, status:'idle',
+      statusLabel:{en:'Idle 25 min',fil:'Naka-idle 25 min'}, pin:[180,250], addr:'Alabang · Filinvest',
+      meta:{en:'Engine on · not moving since 12:47 PM',fil:'Nakaandar · hindi gumagalaw mula 12:47 PM'},
+      headline:{en:'has been idle for 25 minutes',fil:'25 minuto nang naka-idle'},
+      detail:{en:'Stopped near Alabang. Tap to message Jun and check in.',fil:'Nakahinto malapit sa Alabang. I-tap para i-message si Jun.'},
+      note:{en:"Sharing on during Jun's shift",fil:'Naka-share ang lokasyon habang naka-shift si Jun'},
+      time:{en:'8 minutes ago',fil:'8 min ang nakaraan'} },
+    { plate:'PLM', full:'PLM 1174', driver:'Mark Reyes', color:'#18a865', live:false, status:'arrived',
+      statusLabel:{en:'Arrived',fil:'Dumating'}, pin:[250,250], addr:'Clark Distribution Center',
+      meta:{en:'Inside depot geofence · unloading',fil:'Nasa loob ng depot geofence · nagba-baba'},
+      headline:{en:'arrived at Clark DC',fil:'dumating sa Clark DC'},
+      detail:{en:'Entered the depot geofence at 11:30 AM. Trip #1038 complete.',fil:'Pumasok sa depot geofence nang 11:30 AM. Tapos na ang Trip #1038.'},
+      note:{en:'Trip logged to history',fil:'Naitala ang biyahe sa history'},
+      time:{en:'1 hour ago',fil:'1 oras ang nakaraan'} }
+  ];
+
+  var notifs = [
+    { ic:'ok', icon:'<path d="M20 6 9 17l-5-5"/>', body:{en:'<b>PLM 1174</b> (Mark) arrived at <b>Clark DC</b>',fil:'Dumating ang <b>PLM 1174</b> (Mark) sa <b>Clark DC</b>'}, t:{en:'1 hr ago',fil:'1 oras'} },
+    { ic:'warn', icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', body:{en:'<b>TXG 8830</b> (Jun) idle for <b>25 min</b> near Alabang',fil:'<b>TXG 8830</b> (Jun) naka-idle nang <b>25 min</b> malapit sa Alabang'}, t:{en:'8 min ago',fil:'8 min'} },
+    { ic:'warn', icon:'<path d="M3 12h4l2-7 4 14 2-7h5"/>', body:{en:'<b>PLM 1174</b> hit <b>94 km/h</b> on SLEX',fil:'Umabot sa <b>94 km/h</b> ang <b>PLM 1174</b> sa SLEX'}, t:{en:'2 hr ago',fil:'2 oras'} },
+    { ic:'alert', icon:'<path d="M18.4 18.4A9 9 0 1 0 5.6 5.6"/><path d="M2 2l20 20"/>', body:{en:'<b>WYR 6093</b> (Dennis) signal lost · last seen 14 min ago',fil:'Nawalan ng signal ang <b>WYR 6093</b> (Dennis) · huling nakita 14 min ang nakaraan'}, t:{en:'14 min ago',fil:'14 min'} },
+    { ic:'ok', icon:'<path d="M12 2v6M12 2 9 5M12 2l3 3"/><circle cx="12" cy="14" r="7"/>', body:{en:'<b>Ramon</b> started shift · Trip #1042 assigned',fil:'Nag-simula ng shift si <b>Ramon</b> · na-assign ang Trip #1042'}, t:{en:'3 hr ago',fil:'3 oras'} }
+  ];
+
+  var activeTrips = [
+    { no:'#1042', truck:'NBC 4521', driver:'Ramon V.', from:'Manila', to:'Batangas', eta:'2:48 PM', status:'moving', labelKey:'pill_enroute' }
+  ];
+  var doneTrips = [
+    { no:'#1038', truck:'PLM 1174', driver:'Mark R.', from:'Manila', to:'Clark', km:95, dur:'2h 25m', avg:41, startMin:545, endMin:690,
+      path:'M40 250 C110 245 120 150 185 150 S305 120 365 55',
+      events:[ {h:{en:'Departed Manila Depot',fil:'Umalis sa Manila Depot'},t:'9:05 AM',k:''}, {h:{en:'NLEX · Balintawak',fil:'NLEX · Balintawak'},t:'9:40 AM',k:''}, {h:{en:'Idle 8 min · traffic at Sta. Ines',fil:'Idle 8 min · trapik sa Sta. Ines'},t:'10:15 AM',k:'idle'}, {h:{en:'Entered Clark geofence',fil:'Pumasok sa Clark geofence'},t:'11:02 AM',k:''}, {h:{en:'Arrived Clark DC · unloading',fil:'Dumating sa Clark DC · nagba-baba'},t:'11:30 AM',k:'end'} ] },
+    { no:'#1035', truck:'TXG 8830', driver:'Jun C.', from:'Manila', to:'Cavite', km:46, dur:'1h 10m', avg:39, startMin:420, endMin:490,
+      path:'M55 60 C120 85 150 200 225 210 S335 250 365 255',
+      events:[ {h:{en:'Departed Manila Depot',fil:'Umalis sa Manila Depot'},t:'7:00 AM',k:''}, {h:{en:'CAVITEX toll plaza',fil:'CAVITEX toll plaza'},t:'7:35 AM',k:''}, {h:{en:'Arrived Kawit drop-off',fil:'Dumating sa Kawit drop-off'},t:'8:10 AM',k:'end'} ] }
+  ];
+
+  var pinColor = { moving:'var(--accent)', arrived:'var(--accent)', idle:'var(--warn)', offline:'var(--fg-faint)', alert:'var(--alert)' };
+
+  // ===================== Renders =====================
+  function renderTrucks(){
+    var html = '';
+    trucks.forEach(function(tk){
+      var cls = 'truck' + (tk.status==='idle'?' idle':'') + (tk.status==='offline'?' offline':'');
+      html += '<button class="'+cls+'" onclick="go(\'map\')"><span class="ring"><span class="plate" style="background:'+tk.color+'">'+tk.plate+'</span></span><span class="lbl">'+tk.driver+'</span></button>';
+    });
+    html += '<button class="truck add" onclick="toast(t(\'tst_addtruck\'))"><span class="ring" style="background:var(--border)"><span class="plate">+</span></span><span class="lbl">'+(lang==='fil'?'Dagdag truck':'Add truck')+'</span></button>';
+    document.getElementById('trucks').innerHTML = html;
+  }
+
+  function mapSvg(pin, status){
+    var c = pinColor[status] || 'var(--accent)';
+    var cx = pin ? pin[0] : 200, cy = pin ? pin[1] : 160;
+    return '<svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'
+      + '<defs><pattern id="st'+status+'" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M0 25 H50 M25 0 V50" stroke="var(--border)" stroke-width="1.3"/></pattern></defs>'
+      + '<rect width="400" height="320" fill="url(#st'+status+')"/>'
+      + '<path d="M-20 120 Q180 90 430 150" stroke="var(--accent)" stroke-width="8" opacity=".3" fill="none" stroke-linecap="round"/>'
+      + '<path d="M250 -20 Q210 160 320 340" stroke="var(--accent)" stroke-width="6" opacity=".16" fill="none" stroke-linecap="round"/>'
+      + ((status==='arrived')?'<circle cx="'+cx+'" cy="'+cy+'" r="62" fill="var(--accent)" opacity=".10"/><circle cx="'+cx+'" cy="'+cy+'" r="62" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 5" opacity=".55"/>':'')
+      + '<circle cx="'+cx+'" cy="'+cy+'" r="28" fill="'+c+'" opacity=".16"><animate attributeName="r" values="18;32;18" dur="2.6s" repeatCount="indefinite"/></circle>'
+      + '<circle cx="'+cx+'" cy="'+cy+'" r="17" fill="'+c+'"/><circle cx="'+cx+'" cy="'+cy+'" r="17" fill="none" stroke="#fff" stroke-width="3"/></svg>';
+  }
+
+  function renderFeed(){
+    var html = '';
+    feed.forEach(function(p){
+      html += '<article class="card">';
+      html += '<div class="card-head"><div class="av-sm" style="background:'+p.color+'">'+p.plate+'</div>'
+        + '<div class="who"><div class="nm">'+p.full+'</div><div class="sub">'+(p.live?'<span class="live-dot"></span> '+t('live')+' · '+p.driver:p.driver+' · '+L(p.time))+'</div></div>'
+        + '<span class="pill '+p.status+'">'+L(p.statusLabel)+'</span></div>';
+      html += '<div class="map">'+mapSvg(p.pin,p.status)
+        + '<div class="map-badge">'+(p.live?'<span class="live-dot"></span> '+t('live'):t('snapshot'))+'</div>'
+        + '<div class="map-label"><span class="addr">'+p.addr+'</span><span class="meta">'+L(p.meta)+'</span></div></div>';
+      html += '<div class="react-row">'
+        + '<button onclick="go(\'map\')" aria-label="Locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.2 8 12 8 12s8-6.8 8-12a8 8 0 0 0-8-8z"/></svg></button>'
+        + '<button onclick="toast(t(\'tst_msg\')+\''+p.driver+'\')" aria-label="Message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>'
+        + '<button onclick="toast(t(\'tst_call\')+\''+p.driver+'…\')" aria-label="Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></button>'
+        + '<span class="spacer"></span>'
+        + '<button onclick="toast(t(\'tst_savelog\'))" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button></div>';
+      html += '<div class="card-foot"><div class="line"><b>'+p.full+'</b> '+L(p.headline)+'</div>'
+        + '<div class="line muted">'+L(p.detail)+'</div>'
+        + '<div class="shift-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'+L(p.note)+'</div>'
+        + '<div class="time">'+L(p.time)+'</div></div></article>';
+    });
+    document.getElementById('view-home').innerHTML = html;
+  }
+
+  function renderNotifs(){
+    var map = { ok:['var(--accent-soft)','var(--accent)'], warn:['var(--warn-soft)','var(--warn)'], alert:['var(--alert-soft)','var(--alert)'] };
+    var html = '';
+    notifs.forEach(function(n){
+      var c = map[n.ic] || map.ok;
+      html += '<div class="notif"><div class="ic" style="background:'+c[0]+';color:'+c[1]+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+n.icon+'</svg></div><div class="bd">'+L(n.body)+'<div class="t">'+L(n.t)+'</div></div></div>';
+    });
+    document.getElementById('notif-list').innerHTML = html;
+  }
+
+  function renderTrips(){
+    var a = '';
+    activeTrips.forEach(function(tr){
+      var lbl = tr.labelKey ? t(tr.labelKey) : L(tr.label);
+      a += '<div class="trip-card tap" onclick="go(\'map\')"><div class="top"><span class="tno">Trip '+tr.no+'</span><span class="pill '+tr.status+'">'+lbl+'</span></div>'
+        + '<div class="trip-sub">'+tr.truck+' · '+tr.driver+'</div>'
+        + '<div class="trip-route"><span class="node"><span class="d"></span><span class="txt">'+tr.from+'</span></span><span class="track"></span><span class="node"><span class="d end"></span><span class="txt">'+tr.to+'</span></span></div>'
+        + '<div class="trip-meta"><span>ETA <b>'+tr.eta+'</b></span></div></div>';
+    });
+    document.getElementById('trips-active').innerHTML = a || '<p style="color:var(--fg-muted);font-size:.85rem;margin:.2rem 0">'+t('no_active')+'</p>';
+    var d = '';
+    doneTrips.forEach(function(tr,i){
+      d += '<div class="trip-card tap" onclick="openPlayback('+i+')"><div class="top"><span class="tno">Trip '+tr.no+'</span><span class="pill arrived">'+t('completed')+'</span></div>'
+        + '<div class="trip-sub">'+tr.truck+' · '+tr.driver+' · '+tr.km+' km · '+tr.dur+'</div>'
+        + '<div class="trip-route"><span class="node"><span class="d"></span><span class="txt">'+tr.from+'</span></span><span class="track" style="background:var(--accent)"></span><span class="node"><span class="d end"></span><span class="txt">'+tr.to+'</span></span></div>'
+        + '<div class="trip-meta"><span style="color:var(--accent);font-weight:700">'+t('replay')+'</span></div></div>';
+    });
+    document.getElementById('trips-done').innerHTML = d;
+  }
+
+  // ===================== ETA / assign =====================
+  var routeKm = { batangas:128, clark:95, subic:110, cavite:46, tarlac:120, baguio:250, bulacan:40, pampanga:85, laguna:38, 'sta rosa':38, 'sta. rosa':38, lipa:95, lucena:135 };
+  function kmFor(to){ to=(to||'').toLowerCase(); for(var k in routeKm){ if(to.indexOf(k)>=0) return routeKm[k]; } return 60; }
+  function fmtClock(mins){ mins=((Math.round(mins)%1440)+1440)%1440; var h=Math.floor(mins/60), m=mins%60; var ap=h<12?'AM':'PM'; var hh=h%12; if(hh===0)hh=12; return hh+':'+(m<10?'0':'')+m+' '+ap; }
+  function estimate(to, dep){ var km=kmFor(to); var mins=Math.round(km/52*60)+15; var p=(dep||'14:00').split(':'); var depMin=(parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); var h=Math.floor(mins/60), m=mins%60; return { km:km, mins:mins, dur:(h>0?h+'h ':'')+m+'m', eta:fmtClock(depMin+mins) }; }
+  function calcEta(){ var e=estimate(document.getElementById('a-to').value, document.getElementById('a-dep').value); document.getElementById('eta-dist').textContent=e.km+' km'; document.getElementById('eta-dur').textContent=e.dur; document.getElementById('eta-arr').textContent=e.eta; }
+
+  var tripSeq=1043;
+  function assignTrip(){
+    var truck=document.getElementById('a-truck').value;
+    var from=document.getElementById('a-from').value||'Depot';
+    var to=document.getElementById('a-to').value||'Drop-off';
+    var dep=document.getElementById('a-dep').value||'14:00';
+    var e=estimate(to, dep);
+    var no='#'+tripSeq; tripSeq++;
+    var plate=truck.split(' · ')[0]; var drv=(truck.split(' · ')[1]||'');
+    activeTrips.unshift({ no:no, truck:plate, driver:drv, from:from.split(',')[0].split(' ')[0], to:to.split(',')[0], eta:e.eta, status:'moving', label:STR.lbl_assigned });
+    pendingTrip={ no:no, from:from, to:to, km:e.km, dur:'~'+e.dur, eta:e.eta };
+    syncDriverTrip();
+    renderTrips();
+    toast('Trip '+no+' '+t('tst_assigned')+' '+drv+' · ETA '+e.eta);
+    go('trips');
+  }
+
+  // ===================== Driver trip receive =====================
+  var pendingTrip={ no:'#1043', from:'Manila Depot', to:'Subic', km:110, dur:'~2h 22m', eta:'4:22 PM' };
+  function syncDriverTrip(){
+    var short=function(s){ return (s||'').split(',')[0]; };
+    var set=function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+    set('nt-title', t('newTripAssigned')+pendingTrip.no);
+    set('nt-sub', short(pendingTrip.from)+' → '+short(pendingTrip.to)+' · ETA '+pendingTrip.eta);
+    set('ntv-no','Trip '+pendingTrip.no);
+    set('ntv-from', short(pendingTrip.from));
+    set('ntv-to', short(pendingTrip.to));
+    set('ntv-km', pendingTrip.km+' km');
+    set('ntv-dur', pendingTrip.dur);
+    set('ntv-eta', pendingTrip.eta);
+    var card=document.getElementById('newTripCard'); if(card) card.style.display='';
+  }
+  function acceptTrip(){ var card=document.getElementById('newTripCard'); if(card) card.style.display='none'; toast(t('tst_accept')); showDrv('home'); }
+
+  // ===================== Playback =====================
+  var pbPlaying=false, pbProg=0, pbRAF=0, pbTrip=null, pbLen=0;
+  function setXY(id,pt){ var el=document.getElementById(id); el.setAttribute('cx',pt.x); el.setAttribute('cy',pt.y); }
+  function renderPbMeta(){
+    if(!pbTrip) return;
+    document.getElementById('pb-title').textContent='Trip '+pbTrip.no;
+    document.getElementById('pb-sub').textContent=pbTrip.truck+' · '+pbTrip.driver+' · '+t('today');
+    document.getElementById('pb-km').textContent=pbTrip.km;
+    document.getElementById('pb-dur').textContent=pbTrip.dur.replace(/\s/g,'');
+    document.getElementById('pb-avg').textContent=pbTrip.avg;
+    var tl='';
+    pbTrip.events.forEach(function(ev,idx){
+      var last=idx===pbTrip.events.length-1;
+      tl+='<div class="tl-item"><div class="tl-rail"><span class="tl-dot '+(ev.k||'')+'"></span>'+(last?'':'<span class="tl-line"></span>')+'</div><div class="tl-bd"><div class="h">'+L(ev.h)+'</div><div class="t">'+ev.t+'</div></div></div>';
+    });
+    document.getElementById('pb-timeline').innerHTML=tl;
+  }
+  function openPlayback(i){
+    pbTrip=doneTrips[i];
+    renderPbMeta();
+    go('playback');
+    var path=document.getElementById('pbPath');
+    path.setAttribute('d', pbTrip.path);
+    pbLen=path.getTotalLength();
+    setXY('pbStart', path.getPointAtLength(0));
+    setXY('pbEnd', path.getPointAtLength(pbLen));
+    pbStop(); pbProg=0; pbUpdate(0);
+    document.getElementById('pbRange').value=0;
+  }
+  function pbUpdate(p){ var path=document.getElementById('pbPath'); if(!pbLen) pbLen=path.getTotalLength(); setXY('pbMarker', path.getPointAtLength(p*pbLen)); if(pbTrip) document.getElementById('pbTime').textContent=fmtClock(pbTrip.startMin+p*(pbTrip.endMin-pbTrip.startMin)); }
+  function pbScrub(v){ pbPause(); pbProg=v/1000; pbUpdate(pbProg); }
+  function pbIcon(playing){ document.getElementById('pbPlay').innerHTML = playing ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'; }
+  function pbToggle(){ if(pbPlaying) pbPause(); else pbPlay(); }
+  function pbPlay(){ if(pbProg>=1) pbProg=0; pbPlaying=true; pbIcon(true); var last=performance.now(); (function step(now){ if(!pbPlaying) return; var dt=(now-last)/1000; last=now; pbProg+=dt/6; if(pbProg>=1){ pbProg=1; pbUpdate(1); document.getElementById('pbRange').value=1000; pbStop(); return; } pbUpdate(pbProg); document.getElementById('pbRange').value=Math.round(pbProg*1000); pbRAF=requestAnimationFrame(step); })(last); }
+  function pbPause(){ pbPlaying=false; pbIcon(false); if(pbRAF) cancelAnimationFrame(pbRAF); }
+  function pbStop(){ pbPause(); }
+
+  // ===================== Nav / settings / shift =====================
+  function go(view){
+    document.querySelectorAll('.app .view').forEach(function(v){ v.classList.toggle('active', v.dataset.view===view); });
+    var tab = (view==='assign'||view==='playback') ? 'trips' : view;
+    document.querySelectorAll('.tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.tab===tab); });
+    window.scrollTo(0,0);
+    if(['home','map','trips','notifs','fleet'].indexOf(view)>=0){ try{ localStorage.setItem('fp-view', view); }catch(e){} }
+  }
+  function flip(btn,key){ btn.classList.toggle('on'); toast(t(key) + (btn.classList.contains('on') ? t('tst_on') : t('tst_off'))); }
+  function locked(){ toast(t('tst_locked')); }
+
+  function setRole(role){ document.body.classList.toggle('driver', role==='driver'); document.getElementById('rs-op').classList.toggle('on', role==='operator'); document.getElementById('rs-drv').classList.toggle('on', role==='driver'); window.scrollTo(0,0); try{ localStorage.setItem('fp-role', role); }catch(e){}
+    if(role==='driver'){ if(onShift) startGeo(); else geoStatus('geo_offshift'); } else { stopGeo(); } }
+
+  function showDrv(view){ document.querySelectorAll('.drvview').forEach(function(v){ v.classList.toggle('active', v.dataset.drvview===view); }); document.querySelectorAll('.drv-tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.drvtab===view); }); window.scrollTo(0,0); }
+
+  var onShift = true;
+  function setShiftUI(){
+    var hero=document.getElementById('shiftHero'), title=document.getElementById('shiftTitle'), sub=document.getElementById('shiftSub'), orb=document.getElementById('shiftOrb'), btn=document.getElementById('shiftBtn');
+    if(onShift){
+      hero.classList.remove('off');
+      title.textContent=t('shift_on_t'); sub.textContent=t('shift_on_s');
+      orb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.35-7-10a7 7 0 0 1 14 0c0 5.65-7 10-7 10z"/><circle cx="12" cy="11" r="2.5"/></svg>';
+      btn.className='drv-btn warn';
+      btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h6v4H9z"/><circle cx="12" cy="12" r="9"/></svg> '+t('shift_btn_end');
+    } else {
+      hero.classList.add('off');
+      title.textContent=t('shift_off_t'); sub.textContent=t('shift_off_s');
+      orb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 18.4A9 9 0 1 0 5.6 5.6"/><path d="M2 2l20 20"/></svg>';
+      btn.className='drv-btn go';
+      btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9z"/></svg> '+t('shift_btn_start');
+    }
+  }
+  function toggleShift(){ onShift=!onShift; setShiftUI(); toast(onShift ? (lang==='fil'?'Nagsimula ang shift · naka-share ang lokasyon':'Shift started · sharing location') : (lang==='fil'?'Tapos ang shift · naka-off ang location':'Shift ended · location sharing off')); if(onShift) startGeo(); else stopGeo(); }
+
+  // ===================== Driver browser GPS (PWA) =====================
+  // Nagpapadala ng totoong lokasyon sa backend habang naka-shift ang driver.
+  // Browser geolocation: gumagana habang bukas ang app (foreground).
+  var driverId='NBC-4521', geoWatch=null, geoActive=false;
+  function geoStatus(key){ var el=document.getElementById('geo-status'); if(el) el.textContent=t(key); }
+  function saveDriverSetup(){
+    var url=(document.getElementById('drv-backend').value||'').trim();
+    var id=(document.getElementById('drv-id').value||'').trim().toUpperCase();
+    if(url && !/^https?:\/\//.test(url)) url='https://'+url;
+    if(url){ API.baseUrl=url; try{ localStorage.setItem('fp-backend', url); }catch(e){} }
+    if(id){ driverId=id; try{ localStorage.setItem('fp-driverid', id); }catch(e){} }
+    toast(lang==='fil'?'Na-save ang setup':'Setup saved');
+    if(onShift) startGeo(); else geoStatus('geo_nourl');
+  }
+  function sendGeoPing(pos){
+    if(!API.baseUrl) return;
+    var c=pos.coords;
+    fetch(API.baseUrl.replace(/\/$/,'')+'/api/ping', {
+      method:'POST', headers:{'Content-Type':'application/json'}, keepalive:true,
+      body:JSON.stringify({ driverId:driverId, lat:c.latitude, lng:c.longitude, speed:(c.speed!=null?c.speed:null), heading:(c.heading!=null?c.heading:null), accuracy:c.accuracy, ts:Date.now() })
+    }).then(function(){ geoActive=true; geoStatus('geo_sending'); })
+      .catch(function(e){ console.warn('[FleetPulse] ping failed', e); });
+  }
+  function startGeo(){
+    if(!document.body.classList.contains('driver')) return;      // driver app lang
+    if(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()){ geoStatus('geo_sending'); return; } // native: plugin ang bahala
+    if(!API.baseUrl){ geoStatus('geo_nourl'); return; }
+    if(!('geolocation' in navigator)){ geoStatus('geo_unsupported'); return; }
+    if(geoWatch!=null) return;
+    geoStatus('geo_waiting');
+    geoWatch = navigator.geolocation.watchPosition(sendGeoPing, function(err){
+      if(err && err.code===1) geoStatus('geo_denied'); else geoStatus('geo_waiting');
+    }, { enableHighAccuracy:true, maximumAge:5000, timeout:20000 });
+  }
+  function stopGeo(){ if(geoWatch!=null){ navigator.geolocation.clearWatch(geoWatch); geoWatch=null; } geoActive=false; geoStatus('geo_offshift'); }
+
+  function replyPhoto(choice){
+    if(choice==='sent') toast(t('tst_photo_sent'));
+    else if(choice==='later') toast(t('tst_photo_later'));
+    else toast(t('tst_photo_dec'));
+    setTimeout(function(){ showDrv('home'); }, 700);
+  }
+
+  // ===================== Language apply =====================
+  function applyLang(){
+    document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function(el){ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+    document.getElementById('drv-hi').textContent = t('d_hi');
+    document.getElementById('lang-op').textContent = lang==='en' ? 'FIL' : 'EN';
+    document.getElementById('lang-drv').textContent = lang==='en' ? 'FIL' : 'EN';
+    setShiftUI();
+    renderTrucks(); renderFeed(); renderNotifs(); renderTrips(); syncDriverTrip();
+    if(pbTrip) renderPbMeta();
+    calcEta();
+    renderConnStatus();
+    if(connState==='live' && lastFleet.length) applyFleet(lastFleet); // re-localize live rows
+  }
+  function toggleLang(){ lang = (lang==='en') ? 'fil' : 'en'; try{ localStorage.setItem('fp-lang', lang); }catch(e){} applyLang(); }
+
+  // ===================== Toast =====================
+  var toastTimer;
+  function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ el.classList.remove('show'); }, 2800); }
+
+  // ===================== LIVE DATA (backend) =====================
+  // Kapag walang backendUrl -> DEMO mode (sample data).
+  // Kapag may URL -> kukunin ang /api/fleet tuwing ~10s at i-live ang dashboard.
+  var API = { baseUrl: '' };
+  var connState = 'demo';      // demo | connecting | live | waiting | err
+  var pollTimer = null;
+  var lastFleet = [];          // huling live rows (para ma-relocalize sa language switch)
+
+  function renderConnStatus(){
+    var el=document.getElementById('conn-status'); if(!el) return;
+    el.classList.remove('live','err');
+    var txt=document.getElementById('conn-text'), link=document.getElementById('conn-link');
+    link.style.display='none';
+    if(connState==='live'){ el.classList.add('live'); txt.textContent=t('conn_live'); }
+    else if(connState==='waiting'){ el.classList.add('live'); txt.textContent=t('conn_waiting'); }
+    else if(connState==='connecting'){ txt.textContent=t('conn_connecting'); }
+    else if(connState==='err'){ el.classList.add('err'); txt.textContent=t('conn_err'); link.style.display=''; link.textContent=t('conn_link'); }
+    else { txt.textContent=t('conn_demo'); link.style.display=''; link.textContent=t('conn_link'); }
+  }
+
+  // --- lat/lng -> normalized 0..1 (padded bounds across all trucks) ---
+  function projectNorm(rows){
+    var out={}; if(!rows.length) return out;
+    var lats=rows.map(function(r){return r.lat;}), lngs=rows.map(function(r){return r.lng;});
+    var minLa=Math.min.apply(null,lats), maxLa=Math.max.apply(null,lats);
+    var minLo=Math.min.apply(null,lngs), maxLo=Math.max.apply(null,lngs);
+    var dLa=(maxLa-minLa)||0.01, dLo=(maxLo-minLo)||0.01;
+    minLa-=dLa*0.15; maxLa+=dLa*0.15; minLo-=dLo*0.15; maxLo+=dLo*0.15;
+    rows.forEach(function(r){ out[r.driverId]={ nx:(r.lng-minLo)/(maxLo-minLo), ny:(maxLa-r.lat)/(maxLa-minLa) }; });
+    return out;
+  }
+
+  function relTime(ts){
+    var s=Math.max(0,Math.round((Date.now()-ts)/1000));
+    if(s<60) return lang==='fil'? s+' seg ang nakaraan' : s+'s ago';
+    var m=Math.round(s/60); if(m<60) return lang==='fil'? m+' min ang nakaraan' : m+' min ago';
+    var h=Math.round(m/60); return lang==='fil'? h+' oras ang nakaraan' : h+' hr ago';
+  }
+  function statusOf(r){
+    var age=Date.now()-r.ts;
+    if(age>180000) return 'offline';
+    if(r.speed==null || r.speed<0.8) return 'idle';
+    return 'moving';
+  }
+  var liveColor={ moving:'#18a865', arrived:'#18a865', idle:'#cf8613', offline:'#949d92' };
+  var livePillKey={ moving:'pill_enroute', idle:'pill_idle', offline:'pill_offline' };
+
+  // --- Convert live rows into the dashboard's data + render everything ---
+  function applyFleet(rows){
+    lastFleet = rows;
+    if(!rows || rows.length===0){ connState='waiting'; renderConnStatus(); return; }
+    connState='live'; renderConnStatus();
+    var proj=projectNorm(rows);
+
+    // feed + ring arrays
+    feed=[]; trucks=[];
+    rows.forEach(function(r){
+      var st=statusOf(r);
+      var plate=r.plate || r.driverId;
+      var shortPlate=(plate.split(' ')[0]||plate).slice(0,3).toUpperCase();
+      var drv=r.driverName || r.driverId;
+      var kmh=(r.speed!=null)? Math.round(r.speed*3.6):0;
+      var n=proj[r.driverId]||{nx:0.5,ny:0.5};
+      var metaTxt=(st==='offline')
+        ? {en:'Signal lost · '+relTime(r.ts),fil:'Nawalan ng signal · '+relTime(r.ts)}
+        : {en:kmh+' km/h · updated '+relTime(r.ts),fil:kmh+' km/h · '+relTime(r.ts)};
+      var head=(st==='moving')?{en:'is moving',fil:'gumagalaw'}:(st==='idle')?{en:'is idle',fil:'naka-idle'}:{en:'lost signal',fil:'nawalan ng signal'};
+      trucks.push({ plate:shortPlate, driver:drv, color:liveColor[st], status:st });
+      feed.push({
+        plate:shortPlate, full:plate, driver:drv, color:liveColor[st], live:(st!=='offline'),
+        status:st, statusLabel:STR[livePillKey[st]],
+        pin:[Math.round(20+n.nx*360), Math.round(20+n.ny*280)],
+        addr:r.lat.toFixed(4)+', '+r.lng.toFixed(4),
+        meta:metaTxt, headline:head,
+        detail:{en:'Last GPS from '+drv+'’s phone.',fil:'Huling GPS mula sa phone ni '+drv+'.'},
+        note:{en:'Live from driver phone GPS',fil:'Live mula sa GPS ng phone ng driver'},
+        time:{en:relTime(r.ts),fil:relTime(r.ts)}
+      });
+    });
+    renderTrucks(); renderFeed();
+
+    // map sheet list
+    var sheet=document.getElementById('fleet-sheet-list');
+    if(sheet){
+      sheet.innerHTML = rows.map(function(r){
+        var st=statusOf(r); var plate=r.plate||r.driverId; var drv=r.driverName||r.driverId;
+        var kmh=(r.speed!=null)?Math.round(r.speed*3.6):0;
+        var loc=(st==='offline')? (lang==='fil'?'Nawalan ng signal · ':'Signal lost · ')+relTime(r.ts) : r.lat.toFixed(3)+', '+r.lng.toFixed(3)+' · '+kmh+' km/h';
+        return '<div class="fleet-row"><div class="av-sm" style="background:'+liveColor[st]+'">'+((plate.split(' ')[0]||plate).slice(0,3).toUpperCase())+'</div><div class="who"><div class="nm">'+plate+' · '+drv+'</div><div class="loc">'+loc+'</div></div><span class="pill '+st+'">'+t(livePillKey[st])+'</span></div>';
+      }).join('');
+    }
+    var mt=document.getElementById('map-title'); if(mt) mt.textContent=(lang==='fil'?'Ang iyong fleet · ':'Your fleet · ')+rows.length+(lang==='fil'?' truck':' trucks');
+
+    // fullmap pins (400x600)
+    var pins=document.getElementById('fullmap-pins');
+    if(pins){
+      pins.innerHTML = rows.map(function(r){
+        var st=statusOf(r); var n=proj[r.driverId]||{nx:0.5,ny:0.5};
+        var x=Math.round(40+n.nx*320), y=Math.round(60+n.ny*480);
+        var lbl=((r.plate||r.driverId).split(' ')[0]||r.driverId).slice(0,3).toUpperCase();
+        return '<g><circle cx="'+x+'" cy="'+y+'" r="17" fill="'+liveColor[st]+'"/><circle cx="'+x+'" cy="'+y+'" r="17" fill="none" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+(y+6)+'" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="sans-serif">'+lbl+'</text></g>';
+      }).join('');
+    }
+  }
+
+  function pollFleet(){
+    if(!API.baseUrl) return;
+    fetch(API.baseUrl.replace(/\/$/,'')+'/api/fleet', { headers:{'Accept':'application/json'} })
+      .then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status); return res.json(); })
+      .then(function(data){ applyFleet(data.fleet||[]); })
+      .catch(function(e){ console.warn('[FleetPulse] fleet fetch failed', e); connState='err'; renderConnStatus(); });
+  }
+
+  function startPolling(){ if(pollTimer) clearInterval(pollTimer); pollFleet(); pollTimer=setInterval(pollFleet, 10000); }
+  function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+  function connectBackend(){
+    var url=(document.getElementById('a-backend').value||'').trim();
+    if(!url){ toast(lang==='fil'?'Maglagay muna ng Worker URL':'Enter a Worker URL first'); return; }
+    if(!/^https?:\/\//.test(url)) url='https://'+url;
+    API.baseUrl=url; try{ localStorage.setItem('fp-backend', url); }catch(e){}
+    connState='connecting'; renderConnStatus();
+    toast(lang==='fil'?'Kumokonekta sa backend…':'Connecting to backend…');
+    startPolling();
+    go('home');
+  }
+  function disconnectBackend(){
+    stopPolling(); API.baseUrl='';
+    try{ localStorage.removeItem('fp-backend'); }catch(e){}
+    toast(lang==='fil'?'Bumalik sa demo mode':'Back to demo mode');
+    try{ localStorage.setItem('fp-view','fleet'); }catch(e){}
+    location.reload();
+  }
+
+  // ===================== Init =====================
+  try{ var sb=localStorage.getItem('fp-backend'); if(sb){ API.baseUrl=sb; } }catch(e){}
+  try{ var sl=localStorage.getItem('fp-lang'); if(sl==='fil') lang='fil'; }catch(e){}
+  applyLang();
+  try{ var v = localStorage.getItem('fp-view'); if(v) go(v); }catch(e){}
+  try{ var r = localStorage.getItem('fp-role'); if(r==='driver') setRole('driver'); }catch(e){}
+  // Prefill backend input + go live if a URL was saved
+  if(API.baseUrl){ var bi=document.getElementById('a-backend'); if(bi) bi.value=API.baseUrl; connState='connecting'; renderConnStatus(); startPolling(); }
+  // Driver GPS setup: prefill + start if configured and on shift
+  try{ var sd=localStorage.getItem('fp-driverid'); if(sd) driverId=sd; }catch(e){}
+  (function(){ var du=document.getElementById('drv-backend'); if(du&&API.baseUrl) du.value=API.baseUrl; var di=document.getElementById('drv-id'); if(di) di.value=driverId; })();
+  geoStatus(API.baseUrl ? (onShift?'geo_waiting':'geo_offshift') : 'geo_off');
+  if(document.body.classList.contains('driver') && onShift) startGeo();
+</script>
+  <script src="js/tracking.js"></script>
+</body>
+</html>

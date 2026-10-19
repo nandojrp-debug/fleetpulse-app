@@ -1,0 +1,30 @@
+# Codemagic build config para sa FleetPulse Android APK (debug, para sa sideload)
+# Walang signing keys na kailangan — debug APK, pwede nang i-install sa phone.
+
+workflows:
+  android-debug:
+    name: FleetPulse Android (debug APK)
+    max_build_duration: 45
+    environment:
+      node: 20
+      java: 17
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Add Android platform
+        script: |
+          npx cap add android || echo "android platform exists na"
+      - name: Patch location permissions
+        script: |
+          node patch-manifest.js
+      - name: Sync web assets + plugins
+        script: |
+          npx cap sync android
+      - name: Build debug APK
+        script: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/**/*.apk
