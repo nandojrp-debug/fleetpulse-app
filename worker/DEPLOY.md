@@ -59,3 +59,25 @@ Hindi nito gagalawin ang luma mong tables o data.
 | `GET /api/drivers` | **operator lang** | Listahan ng drivers |
 | `POST /api/drivers/:id/deactivate` / `activate` | **operator lang** | Alisin / ibalik ang driver |
 | `POST /api/fleet/rotate-code` | **operator lang** | Bagong invite code |
+| `POST /api/auth/change-password` | naka-login | Palitan ang sariling password (mala-logout ang ibang device) |
+| `POST /api/drivers/:id/reset-password` | **operator lang** | Pansamantalang password para sa driver (mala-logout ang driver) |
+
+## Nakalimutan ang password
+
+- **Driver:** Operator → Fleet tab → Drivers → **I-reset ang password** → ibigay ang pansamantalang password sa driver → pagka-login, palitan niya sa *Account mo → Palitan ang password*.
+- **Operator:** wala pang email reset. Kailangang i-reset nang manual sa database.
+
+## Live map (Google Maps)
+
+Gumagana agad ang Map tab gamit ang **OpenStreetMap** (libre, walang key).
+Para gumamit ng **Google Maps**:
+
+1. Gumawa ng API key sa Google Cloud (Maps JavaScript API) — kailangan ng billing account.
+   - Restrict sa *Websites*: `https://<iyong-dashboard>.workers.dev/*` at `https://localhost/*` (para sa APK)
+   - Restrict sa API: *Maps JavaScript API*
+   - Maglagay ng quota cap (hal. 300 map loads/araw) para siguradong walang singil
+2. Cloudflare → Workers & Pages → **fleetpulse-api** → Settings → Variables and Secrets → Add
+   - Type: Text · Name: `GOOGLE_MAPS_KEY` · Value: ang key → Deploy
+3. Check: `/api/health` ay dapat may `"maps":true`
+
+Kapag walang key o mali ang key, awtomatikong babalik sa OpenStreetMap.

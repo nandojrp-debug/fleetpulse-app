@@ -283,6 +283,47 @@ async function setDriverActive(db, me, driverId, active) {
   return json({ ok: true });
 }
 
+// Kahit sinong naka-login: palitan ang sariling password.
+// Mala-logout ang ibang phone/browser; mananatiling naka-login ang kasalukuyan.
+async function changePassword(request, db, me) {
+  const b = await readJson(request);
+  const current = typeof b.currentPassword === 'string' ? b.currentPassword : '';
+  const next = typeof b.newPassword === 'string' ? b.newPassword : '';
+  if (next.length < 8) return err(400, 'weak_password', 'Kailangan ng bagong password na 8 characters pataas.');
+  const row = await db.prepare('SELECT pass_hash FROM fp_users WHERE id = ?').bind(me.id).first();
+  if (!row || !(await verifyPassword(current, row.pass_hash))) {
+    return err(400, 'bad_password', 'Mali ang kasalukuyang password.');
+  }
+  if (current === next) return err(400, 'same_password', 'Pareho ang bago at lumang password.');
+  await db.batch([
+    db.prepare('UPDATE fp_users SET pass_hash = ? WHERE id = ?').bind(await hashPassword(next), me.id),
+    db.prepare('DELETE FROM fp_sessions WHERE user_id = ? AND token_hash != ?').bind(me.id, me.token_hash),
+  ]);
+  return json({ ok: true });
+}
+
+// Pansamantalang password: madaling basahin at i-type (walang 0/O/1/I/l)
+function tempPassword() {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  let s = '';
+  for (const b of bytes) s += alphabet[b % alphabet.length];
+  return s.slice(0, 5) + '-' + s.slice(5);
+}
+
+// OPERATOR lang: i-reset ang password ng driver sa SARILI niyang fleet.
+async function resetDriverPassword(db, me, driverId) {
+  const d = await db.prepare(`SELECT id FROM fp_users WHERE id = ? AND fleet_id = ? AND role = 'driver'`)
+    .bind(driverId, me.fleet_id).first();
+  if (!d) return err(404, 'not_found', 'Walang ganitong driver sa fleet mo.');
+  const temp = tempPassword();
+  await db.batch([
+    db.prepare('UPDATE fp_users SET pass_hash = ? WHERE id = ?').bind(await hashPassword(temp), driverId),
+    db.prepare('DELETE FROM fp_sessions WHERE user_id = ?').bind(driverId), // logout sa lahat ng phone
+  ]);
+  return json({ tempPassword: temp });
+}
+
 async function rotateCode(db, me) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
@@ -307,7 +348,13 @@ export default {
     try {
       const db = getDb(env);
 
-      if (path === '/' || path === '/api/health') return json({ ok: true, service: 'fleetpulse-api', auth: true });
+      if (path === '/' || path === '/api/health') return json({ ok: true, service: 'fleetpulse-api', auth: true, maps: !!env.GOOGLE_MAPS_KEY });
+
+      // Public config para sa app. Ang Google Maps browser key ay hindi sikreto (nakikita talaga sa browser);
+      // protektado ito ng "Website restrictions" sa Google Cloud.
+      if (method === 'GET' && path === '/api/config') {
+        return json({ googleMapsKey: typeof env.GOOGLE_MAPS_KEY === 'string' ? env.GOOGLE_MAPS_KEY.trim() : '' });
+      }
 
       // Public (walang login)
       if (method === 'POST' && path === '/api/auth/signup-operator') return await signupOperator(request, db);
@@ -322,6 +369,7 @@ export default {
       if (method === 'GET' && path === '/api/me') {
         return json({ user: publicUser(me), fleet: await fleetInfo(db, me) });
       }
+      if (method === 'POST' && path === '/api/auth/change-password') return await changePassword(request, db, me);
 
       // Driver lang
       if (method === 'POST' && path === '/api/ping') {
@@ -338,6 +386,8 @@ export default {
       if (method === 'POST' && path === '/api/fleet/rotate-code') return await rotateCode(db, me);
       const m = path.match(/^\/api\/drivers\/([0-9a-f-]{36})\/(deactivate|activate)$/);
       if (method === 'POST' && m) return await setDriverActive(db, me, m[1], m[2] === 'activate');
+      const rp = path.match(/^\/api\/drivers\/([0-9a-f-]{36})\/reset-password$/);
+      if (method === 'POST' && rp) return await resetDriverPassword(db, me, rp[1]);
 
       return err(404, 'not_found', 'Walang ganitong endpoint.');
     } catch (e) {

@@ -131,6 +131,14 @@
 
   .fullmap { position: relative; height: calc(100vh - 54px - 88px); min-height: 440px; background: radial-gradient(circle at 60% 30%, rgba(24,168,101,.09), transparent 55%), var(--surface-2); overflow: hidden; }
   .fullmap svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .livemap { position: absolute; inset: 0; display: none; z-index: 1; }
+  .fullmap.real .livemap { display: block; }
+  .fullmap.real svg.grid { display: none; }
+  .livemap-msg { position: absolute; left: 50%; top: 38%; transform: translate(-50%,-50%); z-index: 2; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: .6rem .9rem; font-size: .85rem; font-weight: 600; color: var(--fg-muted); box-shadow: var(--shadow); display: none; text-align: center; max-width: 80%; }
+  .fullmap.real .livemap-msg:not(:empty) { display: block; }
+  .fullmap .sheet { z-index: 3; max-height: 42%; overflow-y: auto; }
+  .fleet-row.tap { cursor: pointer; }
+  .react-row a { display: grid; place-items: center; color: var(--fg); text-decoration: none; }
   .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 24px rgba(0,0,0,.12); padding: .5rem max(16px, env(safe-area-inset-left,0px)) 1rem; padding-right: max(16px, env(safe-area-inset-right,0px)); }
   .sheet .grab { width: 36px; height: 4px; border-radius: 99px; background: var(--border); margin: .35rem auto .7rem; }
   .sheet h3 { margin: 0 0 .5rem; font-family: var(--font-display); font-size: 1rem; font-weight: 800; }
@@ -341,6 +349,15 @@
   .acct-row.off .nm, .acct-row.off .sub { opacity: .55; }
   .empty-state { margin: 1rem 16px; padding: 1.4rem 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; text-align: center; color: var(--fg-muted); font-size: .9rem; }
   .empty-state h3 { margin: 0 0 .3rem; color: var(--fg); font-family: var(--font-display); font-size: 1.1rem; }
+  /* Password sheet (modal) */
+  .pw-sheet { position: fixed; inset: 0; z-index: 120; display: none; align-items: flex-end; justify-content: center; background: rgba(10,14,10,.45); }
+  .pw-sheet.show { display: flex; }
+  .pw-sheet .panel { width: 100%; max-width: 480px; background: var(--surface); border-radius: 20px 20px 0 0; padding: 1.1rem 16px calc(1.2rem + env(safe-area-inset-bottom,0px)); box-shadow: var(--shadow); max-height: 92vh; overflow-y: auto; }
+  .pw-sheet h3 { margin: .2rem 0 .2rem; font-family: var(--font-display); font-size: 1.2rem; }
+  .pw-sheet .lede { margin: 0 0 .9rem; color: var(--fg-muted); font-size: .88rem; }
+  .pw-sheet .field input { width: 100%; }
+  .temp-pw { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 800; font-size: 1.5rem; letter-spacing: .06em; color: var(--fg); }
+  .acct-actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
   .empty-state .code { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: .08em; color: var(--accent); margin-top: .5rem; }
 </style>
 </head>
@@ -385,6 +402,7 @@
     <button type="submit" class="drv-btn go" id="auth-submit" style="margin-top:.2rem"><span id="auth-submit-txt">Log in</span></button>
   </form>
 
+  <div class="auth-alt" id="auth-forgot" style="font-size:.8rem;line-height:1.45" data-i18n="a_forgot">Forgot your password?</div>
   <div class="auth-alt"><span data-i18n="a_demo_q">Just looking?</span> <button type="button" onclick="enterDemo()" data-i18n="a_demo">View the demo</button></div>
 </div>
 
@@ -423,6 +441,8 @@
     <!-- MAP -->
     <section class="view" id="view-map" data-view="map">
       <div class="fullmap">
+        <div class="livemap" id="livemap"></div>
+        <div class="livemap-msg" id="livemap-msg"></div>
         <svg class="grid" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <defs><pattern id="streets" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="none"/><path d="M0 30 H60 M30 0 V60" stroke="var(--border)" stroke-width="1.5"/></pattern></defs>
           <rect width="400" height="600" fill="url(#streets)"/>
@@ -484,7 +504,7 @@
         <div class="pad" id="drv-list"><div class="demo-flag" style="text-align:left">…</div></div>
         <div class="grouplabel" data-i18n="g_account">Account</div>
         <div class="pad">
-          <div class="acct-row"><div class="who"><div class="nm" id="op-name">—</div><div class="sub" id="op-email">—</div></div><button class="mini-btn danger" onclick="signOut()" data-i18n="logout">Log out</button></div>
+          <div class="acct-row"><div class="who"><div class="nm" id="op-name">—</div><div class="sub" id="op-email">—</div></div><div class="acct-actions"><button class="mini-btn" onclick="openChangePw()" data-i18n="pw_change_btn">Change password</button><button class="mini-btn danger" onclick="signOut()" data-i18n="logout">Log out</button></div></div>
         </div>
       </div>
       <div id="op-demo-login" class="pad" style="display:none">
@@ -626,7 +646,10 @@
       <div class="drv-info" id="drv-account">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
         <div class="bd"><div class="h" id="drv-acc-name">—</div><div class="d" id="drv-acc-sub">—</div></div>
-        <button class="mini-btn danger" onclick="signOut()" data-i18n="logout">Log out</button>
+      </div>
+      <div id="drv-account-btns" style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button class="mini-btn" style="flex:1;padding:.65rem" onclick="openChangePw()" data-i18n="pw_change_btn">Change password</button>
+        <button class="mini-btn danger" style="flex:1;padding:.65rem" onclick="signOut()" data-i18n="logout">Log out</button>
       </div>
 
       <div class="drv-label" data-i18n="d_curtrip">Current trip</div>
@@ -724,6 +747,30 @@
     <button class="tab" data-drvtab="trip" onclick="showDrv('trip')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20 3 17V4l6 3 6-3 6 3v13l-6-3-6 3z"/></svg><span data-i18n="dt_trip">Trip</span></button>
     <button class="tab danger" data-drvtab="help" onclick="showDrv('help')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span data-i18n="dt_help">Help</span></button>
   </nav>
+</div>
+
+<!-- ============ PASSWORD SHEETS ============ -->
+<div class="pw-sheet" id="pw-change" onclick="if(event.target===this) closeSheets()">
+  <form class="panel" onsubmit="submitChangePw(event)" novalidate>
+    <h3 data-i18n="pw_change_h">Change password</h3>
+    <p class="lede" data-i18n="pw_change_p">Other phones and browsers signed in to this account will be logged out.</p>
+    <div class="auth-err" id="pw-err" role="alert"></div>
+    <div class="field"><label for="pw-cur" data-i18n="pw_cur">Current password</label><input id="pw-cur" type="password" autocomplete="current-password"></div>
+    <div class="field"><label for="pw-new" data-i18n="pw_new">New password (at least 8 characters)</label><input id="pw-new" type="password" autocomplete="new-password"></div>
+    <div class="field"><label for="pw-new2" data-i18n="pw_new2">Type the new password again</label><input id="pw-new2" type="password" autocomplete="new-password"></div>
+    <button type="submit" class="drv-btn go" id="pw-submit" style="margin-top:.2rem"><span data-i18n="pw_save">Save new password</span></button>
+    <button type="button" class="drv-btn ghost" onclick="closeSheets()" data-i18n="h_cancel">Cancel</button>
+  </form>
+</div>
+
+<div class="pw-sheet" id="pw-temp" onclick="if(event.target===this) closeSheets()">
+  <div class="panel">
+    <h3 data-i18n="pw_temp_h">Temporary password</h3>
+    <p class="lede" id="pw-temp-for">—</p>
+    <div class="code-box"><div class="temp-pw" id="pw-temp-val">—</div><button class="mini-btn" onclick="copyTemp()" data-i18n="inv_copy">Copy</button></div>
+    <p class="lede" data-i18n="pw_temp_note">Give this to the driver. They were logged out on every phone. After logging in, they should change it under Your account → Change password. This password is shown only once.</p>
+    <button type="button" class="drv-btn go" onclick="closeSheets()" data-i18n="pw_done">Done</button>
+  </div>
 </div>
 
 <script>
@@ -851,6 +898,21 @@
     empty_p:{en:'Give your drivers this invite code. Their truck shows up here once they start a shift.',fil:'Ibigay sa drivers mo ang invite code na ito. Lalabas dito ang truck nila kapag nag-start na sila ng shift.'},
     geo_off:{en:'Start your shift to share your location with dispatch.',fil:'I-start ang shift para i-share ang lokasyon mo sa dispatch.'},
     tst_addtruck:{en:'Add a truck: give the driver your invite code (Fleet tab). Their truck appears once they start a shift.',fil:'Magdagdag ng truck: ibigay sa driver ang invite code (Fleet tab). Lalabas ang truck kapag nag-start siya ng shift.'},
+    pw_change_btn:{en:'Change password',fil:'Palitan ang password'}, pw_change_h:{en:'Change password',fil:'Palitan ang password'},
+    pw_change_p:{en:'Other phones and browsers signed in to this account will be logged out.',fil:'Mala-logout ang ibang phone at browser na naka-login sa account na ito.'},
+    pw_cur:{en:'Current password',fil:'Kasalukuyang password'}, pw_new:{en:'New password (at least 8 characters)',fil:'Bagong password (8 characters pataas)'}, pw_new2:{en:'Type the new password again',fil:'I-type ulit ang bagong password'},
+    pw_save:{en:'Save new password',fil:'I-save ang bagong password'}, pw_done:{en:'Done',fil:'Tapos'},
+    pw_mismatch:{en:"The new passwords don't match.",fil:'Hindi magkapareho ang bagong password.'},
+    pw_saved:{en:'Password changed',fil:'Napalitan ang password'},
+    pw_reset_btn:{en:'Reset password',fil:'I-reset ang password'},
+    pw_reset_q:{en:'Reset this driver\u2019s password? They will be logged out and need the temporary password to log in.',fil:'I-reset ang password ng driver na ito? Mala-logout siya at kailangan niya ang pansamantalang password para mag-login.'},
+    pw_temp_h:{en:'Temporary password',fil:'Pansamantalang password'}, pw_temp_for:{en:'For ',fil:'Para kay '},
+    pw_temp_note:{en:'Give this to the driver. They were logged out on every phone. After logging in, they should change it under Your account → Change password. This password is shown only once.',fil:'Ibigay ito sa driver. Na-logout siya sa lahat ng phone. Pagka-login, palitan niya ito sa Account mo → Palitan ang password. Isang beses lang ipapakita ang password na ito.'},
+    pw_copied:{en:'Password copied',fil:'Nakopya ang password'},
+    a_forgot:{en:'Forgot your password? Drivers: ask your operator to reset it. Operators: contact FleetPulse support.',fil:'Nakalimutan ang password? Driver: hilingin sa operator mo na i-reset ito. Operator: kausapin ang FleetPulse support.'},
+    map_loading:{en:'Loading map…',fil:'Nilo-load ang mapa…'}, map_error:{en:"Couldn't load the map. Check your internet.",fil:'Hindi ma-load ang mapa. I-check ang internet.'},
+    map_empty:{en:'No trucks yet. They appear here once a driver starts a shift.',fil:'Wala pang truck. Lalabas sila dito kapag nag-start ng shift ang driver.'},
+    map_open_g:{en:'Open in Google Maps',fil:'Buksan sa Google Maps'},
     geo_nourl:{en:'Start your shift to share your location with dispatch.',fil:'I-start ang shift para i-share ang lokasyon mo sa dispatch.'}
   });
 
@@ -948,10 +1010,11 @@
         + '<div class="map-badge">'+(p.live?'<span class="live-dot"></span> '+t('live'):t('snapshot'))+'</div>'
         + '<div class="map-label"><span class="addr">'+p.addr+'</span><span class="meta">'+L(p.meta)+'</span></div></div>';
       html += '<div class="react-row">'
-        + '<button onclick="go(\'map\')" aria-label="Locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.2 8 12 8 12s8-6.8 8-12a8 8 0 0 0-8-8z"/></svg></button>'
+        + '<button onclick="'+(p.id?'focusTruck(\''+p.id+'\')':'go(\'map\')')+'" aria-label="Locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.2 8 12 8 12s8-6.8 8-12a8 8 0 0 0-8-8z"/></svg></button>'
         + '<button onclick="toast(t(\'tst_msg\')+\''+p.driver+'\')" aria-label="Message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>'
         + '<button onclick="toast(t(\'tst_call\')+\''+p.driver+'…\')" aria-label="Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></button>'
         + '<span class="spacer"></span>'
+        + (p.lat!=null ? '<a href="'+gmapsLink(p.lat,p.lng)+'" target="_blank" rel="noopener" aria-label="'+t('map_open_g')+'" title="'+t('map_open_g')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></a>' : '')
         + '<button onclick="toast(t(\'tst_savelog\'))" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button></div>';
       html += '<div class="card-foot"><div class="line"><b>'+p.full+'</b> '+L(p.headline)+'</div>'
         + '<div class="line muted">'+L(p.detail)+'</div>'
@@ -1071,6 +1134,7 @@
 
   // ===================== Nav / settings / shift =====================
   function go(view){ if(view==='fleet') loadDrivers();
+    if(view==='map') setTimeout(mapShow, 0);
     document.querySelectorAll('.app .view').forEach(function(v){ v.classList.toggle('active', v.dataset.view===view); });
     var tab = (view==='assign'||view==='playback') ? 'trips' : view;
     document.querySelectorAll('.tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.tab===tab); });
@@ -1216,7 +1280,7 @@
     var cnt={moving:0,idle:0,offline:0};
     lastFleet.forEach(function(r){ cnt[statusOf(r)]++; });
     setText('st-on', cnt.moving); setText('st-idle', cnt.idle); setText('st-off', cnt.offline);
-    if(lastFleet.length===0){ connState='waiting'; renderConnStatus(); feed=[]; trucks=[]; renderTrucks(); renderFeed(); return; }
+    if(lastFleet.length===0){ connState='waiting'; renderConnStatus(); feed=[]; trucks=[]; renderTrucks(); renderFeed(); mapUpdate([]); return; }
     connState='live'; renderConnStatus();
     var proj=projectNorm(rows);
 
@@ -1235,6 +1299,7 @@
       var head=(st==='moving')?{en:'is moving',fil:'gumagalaw'}:(st==='idle')?{en:'is idle',fil:'naka-idle'}:{en:'lost signal',fil:'nawalan ng signal'};
       trucks.push({ plate:shortPlate, driver:drv, color:liveColor[st], status:st });
       feed.push({
+        id:r.driverId, lat:r.lat, lng:r.lng,
         plate:shortPlate, full:plate, driver:drv, color:liveColor[st], live:(st!=='offline'),
         status:st, statusLabel:STR[livePillKey[st]],
         pin:[Math.round(20+n.nx*360), Math.round(20+n.ny*280)],
@@ -1254,7 +1319,7 @@
         var st=statusOf(r); var plate=r.plate||r.driverId; var drv=r.driverName||r.driverId;
         var kmh=(r.speed!=null)?Math.round(r.speed*3.6):0;
         var loc=(st==='offline')? (lang==='fil'?'Nawalan ng signal · ':'Signal lost · ')+relTime(r.ts) : r.lat.toFixed(3)+', '+r.lng.toFixed(3)+' · '+kmh+' km/h';
-        return '<div class="fleet-row"><div class="av-sm" style="background:'+liveColor[st]+'">'+((plate.split(' ')[0]||plate).slice(0,3).toUpperCase())+'</div><div class="who"><div class="nm">'+plate+' · '+drv+'</div><div class="loc">'+loc+'</div></div><span class="pill '+st+'">'+t(livePillKey[st])+'</span></div>';
+        return '<div class="fleet-row tap" onclick="focusTruck(\''+r.driverId+'\')"><div class="av-sm" style="background:'+liveColor[st]+'">'+((plate.split(' ')[0]||plate).slice(0,3).toUpperCase())+'</div><div class="who"><div class="nm">'+plate+' · '+drv+'</div><div class="loc">'+loc+'</div></div><span class="pill '+st+'">'+t(livePillKey[st])+'</span></div>';
       }).join('');
     }
     var mt=document.getElementById('map-title'); if(mt) mt.textContent=(lang==='fil'?'Ang iyong fleet · ':'Your fleet · ')+rows.length+(lang==='fil'?' truck':' trucks');
@@ -1269,6 +1334,136 @@
         return '<g><circle cx="'+x+'" cy="'+y+'" r="17" fill="'+liveColor[st]+'"/><circle cx="'+x+'" cy="'+y+'" r="17" fill="none" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+(y+6)+'" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="sans-serif">'+lbl+'</text></g>';
       }).join('');
     }
+    mapUpdate(rows);
+  }
+
+  // ===================== LIVE MAP (Google Maps, o OpenStreetMap kung wala pang key) =====================
+  // Ang Google Maps key ay naka-set sa Cloudflare Worker (variable: GOOGLE_MAPS_KEY) at kinukuha sa /api/config.
+  // Isang beses lang nilo-load ang mapa kada bukas ng app (para tipid sa Google free tier).
+  var FPMap = { state:'idle', provider:null, map:null, markers:{}, info:null, rows:[], fitted:false, focusId:null };
+
+  function gmapsLink(lat, lng){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(lat+','+lng); }
+  function loadScript(src, cb, errCb){ var s=document.createElement('script'); s.src=src; s.async=true; s.onload=cb; s.onerror=errCb||function(){}; document.head.appendChild(s); }
+  function loadCss(href){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); }
+
+  function mapShow(){
+    if(!isOperator()) return;
+    var fm=document.querySelector('.fullmap'); if(fm) fm.classList.add('real');
+    if(FPMap.state==='idle'){ mapInit(); return; }
+    if(FPMap.state==='ready'){
+      if(FPMap.provider==='leaflet') setTimeout(function(){ FPMap.map.invalidateSize(); }, 60);
+      mapUpdate(FPMap.rows);
+    }
+  }
+
+  function mapInit(){
+    FPMap.state='loading';
+    setText('livemap-msg', t('map_loading'));
+    apiFetch('/api/config').then(function(c){ return (c && c.googleMapsKey) || ''; }).catch(function(){ return ''; })
+      .then(function(key){
+        if(key){
+          window.fpGmapsReady=function(){ mapCreate('google'); };
+          window.gm_authFailure=function(){ console.warn('[FleetPulse] Google Maps key rejected — gagamit ng OpenStreetMap'); mapFallback(); };
+          loadScript('https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&callback=fpGmapsReady&loading=async&v=weekly', null, mapFallback);
+        } else { mapFallback(); }
+      });
+  }
+
+  function mapFallback(){
+    if(FPMap.provider==='leaflet') return;
+    if(FPMap.provider==='google'){ var el=document.getElementById('livemap'); el.innerHTML=''; FPMap.markers={}; FPMap.map=null; FPMap.fitted=false; }
+    FPMap.provider='leaflet-loading';
+    loadCss('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css');
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', function(){ mapCreate('leaflet'); },
+      function(){ FPMap.state='error'; setText('livemap-msg', t('map_error')); });
+  }
+
+  function mapCreate(provider){
+    var el=document.getElementById('livemap');
+    var center={ lat:12.8797, lng:121.7740 }; // gitna ng Pilipinas
+    FPMap.provider=provider; FPMap.markers={}; FPMap.fitted=false;
+    if(provider==='google'){
+      FPMap.map=new google.maps.Map(el, { center:center, zoom:6, mapTypeControl:false, streetViewControl:false, fullscreenControl:false, clickableIcons:false, gestureHandling:'greedy' });
+      FPMap.info=new google.maps.InfoWindow();
+    } else {
+      FPMap.map=L.map(el, { zoomControl:true, attributionControl:true }).setView([center.lat, center.lng], 6);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(FPMap.map);
+    }
+    FPMap.state='ready';
+    setText('livemap-msg', '');
+    mapUpdate(FPMap.rows);
+  }
+
+  function truckPopup(r){
+    var st=statusOf(r), kmh=(r.speed!=null)?Math.round(r.speed*3.6):0;
+    return '<div style="font-family:var(--font-body);min-width:170px;color:#10140f">'
+      +'<div style="font-weight:800;font-size:14px">'+esc(r.plate||r.driverId)+'</div>'
+      +'<div style="font-size:12px;color:#5a635a;margin:2px 0 6px">'+esc(r.driverName||'')+' · '+t(livePillKey[st])+'</div>'
+      +'<div style="font-size:12px">'+kmh+' km/h · '+esc(relTime(r.ts))+'</div>'
+      +'<a href="'+gmapsLink(r.lat,r.lng)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:#18a865;text-decoration:none">'+t('map_open_g')+' ↗</a></div>';
+  }
+  function shortLbl(r){ return ((r.plate||r.driverId||'').split(' ')[0]||'').slice(0,3).toUpperCase(); }
+
+  function mapUpdate(rows){
+    FPMap.rows = rows || [];
+    if(FPMap.state!=='ready') return;
+    setText('livemap-msg', FPMap.rows.length ? '' : t('map_empty'));
+    var seen={};
+    FPMap.rows.forEach(function(r){
+      seen[r.driverId]=true;
+      var color=liveColor[statusOf(r)], pos={ lat:r.lat, lng:r.lng }, m=FPMap.markers[r.driverId];
+      if(FPMap.provider==='google'){
+        var icon={ path:google.maps.SymbolPath.CIRCLE, scale:17, fillColor:color, fillOpacity:1, strokeColor:'#ffffff', strokeWeight:3 };
+        var label={ text:shortLbl(r), color:'#ffffff', fontWeight:'800', fontSize:'11px' };
+        if(!m){
+          m=new google.maps.Marker({ map:FPMap.map, position:pos, icon:icon, label:label, title:(r.plate||'')+' · '+(r.driverName||'') });
+          m.addListener('click', function(){ FPMap.info.setContent(truckPopup(m.fpRow)); FPMap.info.open({ map:FPMap.map, anchor:m }); });
+          FPMap.markers[r.driverId]=m;
+        } else { m.setPosition(pos); m.setIcon(icon); m.setLabel(label); }
+      } else {
+        var html='<div style="width:34px;height:34px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);display:grid;place-items:center;color:#fff;font:800 11px sans-serif">'+esc(shortLbl(r))+'</div>';
+        var ic=L.divIcon({ html:html, className:'', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-16] });
+        if(!m){ m=L.marker([r.lat,r.lng], { icon:ic, title:r.plate||'' }).addTo(FPMap.map); FPMap.markers[r.driverId]=m; }
+        else { m.setLatLng([r.lat,r.lng]); m.setIcon(ic); }
+        m.bindPopup(truckPopup(r));
+      }
+      m.fpRow=r;
+    });
+    Object.keys(FPMap.markers).forEach(function(id){
+      if(seen[id]) return;
+      var m=FPMap.markers[id];
+      if(FPMap.provider==='google') m.setMap(null); else FPMap.map.removeLayer(m);
+      delete FPMap.markers[id];
+    });
+    if(FPMap.focusId && FPMap.markers[FPMap.focusId]){ mapFocusNow(FPMap.focusId); FPMap.focusId=null; FPMap.fitted=true; }
+    else if(!FPMap.fitted && FPMap.rows.length){ mapFitAll(); FPMap.fitted=true; }
+  }
+
+  function mapFitAll(){
+    if(FPMap.state!=='ready' || !FPMap.rows.length) return;
+    if(FPMap.rows.length===1){ var r=FPMap.rows[0]; mapCenter(r.lat, r.lng, 14); return; }
+    if(FPMap.provider==='google'){
+      var b=new google.maps.LatLngBounds(); FPMap.rows.forEach(function(r){ b.extend({ lat:r.lat, lng:r.lng }); });
+      FPMap.map.fitBounds(b, 60);
+    } else {
+      FPMap.map.fitBounds(FPMap.rows.map(function(r){ return [r.lat,r.lng]; }), { padding:[50,50] });
+    }
+  }
+  function mapCenter(lat, lng, z){
+    if(FPMap.provider==='google'){ FPMap.map.setCenter({ lat:lat, lng:lng }); FPMap.map.setZoom(z); }
+    else FPMap.map.setView([lat,lng], z);
+  }
+  function mapFocusNow(id){
+    var m=FPMap.markers[id]; if(!m) return; var r=m.fpRow;
+    mapCenter(r.lat, r.lng, 15);
+    if(FPMap.provider==='google'){ FPMap.info.setContent(truckPopup(r)); FPMap.info.open({ map:FPMap.map, anchor:m }); }
+    else m.openPopup();
+  }
+  // Mula sa feed card o listahan: buksan ang Map tab at i-zoom sa truck
+  function focusTruck(id){
+    go('map');
+    if(FPMap.state==='ready' && FPMap.markers[id]) setTimeout(function(){ mapFocusNow(id); }, 80);
+    else FPMap.focusId=id;
   }
 
   // ===================== ACCOUNTS (login / signup) =====================
@@ -1312,6 +1507,7 @@
     document.getElementById('at-login').classList.toggle('on', mode==='login');
     document.getElementById('at-signup').classList.toggle('on', mode==='signup');
     document.getElementById('signup-role').style.display = mode==='signup' ? '' : 'none';
+    document.getElementById('auth-forgot').style.display = mode==='login' ? '' : 'none';
     document.getElementById('f-pass').setAttribute('autocomplete', mode==='signup' ? 'new-password' : 'current-password');
     authErr(''); pickRole(signupRole); renderAuthText();
   }
@@ -1424,6 +1620,7 @@
       setText('drv-acc-sub', ((SESSION.fleet && SESSION.fleet.name) || '') + ' · ' + SESSION.user.email);
     }
     var da=document.getElementById('drv-account'); if(da) da.style.display = isDriver() ? '' : 'none';
+    var db2=document.getElementById('drv-account-btns'); if(db2) db2.style.display = isDriver() ? 'flex' : 'none';
   }
   function renderDriverList(){
     var box=document.getElementById('drv-list'); if(!box) return;
@@ -1433,7 +1630,8 @@
       var sub = !d.active ? t('drv_off') : (d.lastPing ? t('drv_last')+relTime(d.lastPing) : t('drv_never'));
       return '<div class="acct-row'+(d.active?'':' off')+'"><div class="av-sm" style="background:'+(d.active?'var(--accent)':'var(--fg-faint)')+'">'+esc((d.plate||'?').split(' ')[0].slice(0,3))+'</div>'
         +'<div class="who"><div class="nm">'+esc(d.plate||'')+' · '+esc(d.name)+'</div><div class="sub">'+esc(sub)+' · '+esc(d.email)+'</div></div>'
-        +'<button class="mini-btn'+(d.active?' danger':'')+'" onclick="setDriverActive(\''+esc(d.id)+'\','+(d.active?'false':'true')+')">'+t(d.active?'drv_deact':'drv_react')+'</button></div>';
+        +'<div class="acct-actions">'+(d.active?'<button class="mini-btn" onclick="resetDriverPw(\''+esc(d.id)+'\')">'+t('pw_reset_btn')+'</button>':'')
+        +'<button class="mini-btn'+(d.active?' danger':'')+'" onclick="setDriverActive(\''+esc(d.id)+'\','+(d.active?'false':'true')+')">'+t(d.active?'drv_deact':'drv_react')+'</button></div></div>';
     }).join('');
   }
   function loadDrivers(){
@@ -1455,6 +1653,43 @@
     apiFetch('/api/fleet/rotate-code', { method:'POST' }).then(function(d){
       SESSION.fleet.joinCode=d.joinCode; saveSession(SESSION); renderAccount(); if(feed.length===0) renderFeed(); toast(t('inv_rotated'));
     }).catch(function(e){ toast(e.message); });
+  }
+
+  // ---- Password: palitan (lahat) / i-reset (operator → driver) ----
+  function closeSheets(){ document.querySelectorAll('.pw-sheet').forEach(function(el){ el.classList.remove('show'); }); }
+  function pwErr(msg){ var el=document.getElementById('pw-err'); el.textContent=msg||''; el.classList.toggle('show', !!msg); }
+  function openChangePw(){
+    ['pw-cur','pw-new','pw-new2'].forEach(function(id){ document.getElementById(id).value=''; });
+    pwErr(''); document.getElementById('pw-change').classList.add('show');
+    setTimeout(function(){ document.getElementById('pw-cur').focus(); }, 50);
+  }
+  function submitChangePw(ev){
+    if(ev) ev.preventDefault();
+    var cur=document.getElementById('pw-cur').value, nw=document.getElementById('pw-new').value, nw2=document.getElementById('pw-new2').value;
+    if(!cur || !nw){ pwErr(t('a_err_fill')); return; }
+    if(nw!==nw2){ pwErr(t('pw_mismatch')); return; }
+    var btn=document.getElementById('pw-submit'); btn.disabled=true; pwErr('');
+    apiFetch('/api/auth/change-password', { method:'POST', body:{ currentPassword:cur, newPassword:nw }, noAuthRedirect:true })
+      .then(function(){ closeSheets(); toast(t('pw_saved')); })
+      .catch(function(e){ pwErr(e.status ? e.message : t('a_err_net')); })
+      .then(function(){ btn.disabled=false; });
+  }
+  var lastTemp='';
+  function resetDriverPw(id){
+    var d=(driversCache||[]).filter(function(x){ return x.id===id; })[0];
+    if(!confirm(t('pw_reset_q'))) return;
+    apiFetch('/api/drivers/'+encodeURIComponent(id)+'/reset-password', { method:'POST' })
+      .then(function(r){
+        lastTemp=r.tempPassword||'';
+        setText('pw-temp-val', lastTemp);
+        setText('pw-temp-for', t('pw_temp_for')+(d ? (d.name+' · '+(d.plate||'')+' · '+d.email) : ''));
+        document.getElementById('pw-temp').classList.add('show');
+      })
+      .catch(function(e){ toast(e.message); });
+  }
+  function copyTemp(){
+    var done=function(){ toast(t('pw_copied')); };
+    if(lastTemp && navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(lastTemp).then(done, done); } else { done(); }
   }
 
   function connLinkClick(){ if(SESSION) go('fleet'); else showAuth(); }
