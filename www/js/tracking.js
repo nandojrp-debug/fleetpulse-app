@@ -5,14 +5,12 @@
 // Nagpapadala ng lokasyon sa backend HABANG naka-shift ang driver —
 // kahit naka-lock ang phone, naka-FB, o nakabulsa. Humihinto pag clock out.
 //
-// Kinukuha ang Backend URL at Driver ID mula sa "Dispatch connection"
-// card sa Driver view (naka-save sa localStorage).
+// Gumagana LANG kapag naka-login bilang DRIVER. Ang login token ang
+// nagsasabi sa server kung sinong driver ito (walang driver ID na tina-type).
 // =============================================================
 
 var FP = {
-  // Default kung wala pang na-save sa app (pwede palitan sa Dispatch connection card)
   defaultBackend: 'https://fleetpulse-api.fernandojrpalermo-work.workers.dev',
-  defaultDriverId: 'NBC-4521',
   watcherId: null
 };
 
@@ -20,7 +18,11 @@ function fpGet(key, fallback) {
   try { var v = localStorage.getItem(key); return v || fallback; } catch (e) { return fallback; }
 }
 function fpBackend() { return (fpGet('fp-backend', FP.defaultBackend) || '').replace(/\/$/, ''); }
-function fpDriverId() { return fpGet('fp-driverid', FP.defaultDriverId); }
+function fpSession() {
+  try { var s = JSON.parse(localStorage.getItem('fp-session') || 'null'); return s && s.token && s.user ? s : null; }
+  catch (e) { return null; }
+}
+function fpIsDriver() { var s = fpSession(); return !!(s && s.user.role === 'driver'); }
 
 function fpHasPlugin() {
   return !!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.BackgroundGeolocation);
@@ -32,6 +34,7 @@ async function startTracking() {
     console.log('[FleetPulse] Walang native plugin (web preview). OK lang sa browser.');
     return;
   }
+  if (!fpIsDriver()) return;          // operator o demo: walang tracking
   if (FP.watcherId) return;
 
   var BackgroundGeolocation = Capacitor.Plugins.BackgroundGeolocation;
@@ -59,19 +62,19 @@ async function startTracking() {
 async function stopTracking() {
   if (!fpHasPlugin() || !FP.watcherId) return;
   var BackgroundGeolocation = Capacitor.Plugins.BackgroundGeolocation;
-  await BackgroundGeolocation.removeWatcher({ id: FP.watcherId });
+  var id = FP.watcherId;
   FP.watcherId = null;
+  await BackgroundGeolocation.removeWatcher({ id: id });
 }
 
 function sendPing(loc) {
-  var url = fpBackend();
-  if (!url) return;
-  fetch(url + '/api/ping', {
+  var s = fpSession();
+  if (!s || s.user.role !== 'driver') { stopTracking(); return; }
+  fetch(fpBackend() + '/api/ping', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token },
     keepalive: true,
     body: JSON.stringify({
-      driverId: fpDriverId(),
       lat: loc.latitude,
       lng: loc.longitude,
       speed: loc.speed,
@@ -79,8 +82,18 @@ function sendPing(loc) {
       accuracy: loc.accuracy,
       ts: Date.now()
     })
+  }).then(function (res) {
+    // Na-logout o na-deactivate ng operator → itigil ang tracking
+    if (res.status === 401 || res.status === 403) stopTracking();
   }).catch(function (e) { console.warn('[FleetPulse] ping failed', e); });
 }
+
+// Tinatawag ng app pagkatapos mag-login / mag-logout
+window.fpNativeSync = function () {
+  if (!fpHasPlugin()) return;
+  if (fpIsDriver() && window.onShift) startTracking(); else stopTracking();
+};
+window.fpNativeStop = function () { stopTracking(); };
 
 // I-wire sa shift toggle ng app (native lang; sa browser, ang in-page GPS ang bahala).
 window.addEventListener('DOMContentLoaded', function () {
@@ -89,8 +102,8 @@ window.addEventListener('DOMContentLoaded', function () {
     var original = window.toggleShift;
     window.toggleShift = function () {
       original();
-      if (window.onShift) { startTracking(); } else { stopTracking(); }
+      window.fpNativeSync();
     };
   }
-  if (window.onShift) { startTracking(); }
+  window.fpNativeSync();
 });

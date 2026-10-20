@@ -1,0 +1,10 @@
+# Para lang ito kung gagamit ka ng Wrangler CLI.
+# Kung sa Cloudflare dashboard ka nagde-deploy (copy-paste ng code), hindi mo ito kailangan.
+name = "fleetpulse-api"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fleetpulse"          # palitan ng pangalan ng D1 database mo
+database_id = "PALITAN-NG-DATABASE-ID" # makikita sa Cloudflare → D1 → iyong database

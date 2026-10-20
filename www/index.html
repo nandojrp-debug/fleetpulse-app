@@ -301,9 +301,93 @@
 
   .toast { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%) translateY(10px); background: var(--ink); color: var(--ink-fg); padding: .7rem 1rem; border-radius: 12px; font-size: .85rem; font-weight: 700; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: all .22s; z-index: 100; max-width: 90%; text-align: center; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Auth (login / signup) ===== */
+  .auth { display: none; min-height: 100%; max-width: 480px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top,0px)) 20px 40px; flex-direction: column; gap: 1rem; }
+  body.authgate .auth { display: flex; }
+  body.authgate .app, body.authgate .driverwrap, body.authgate .roleswitch { display: none !important; }
+  body.signedin .roleswitch { display: none; }
+  body.signedin [data-i18n="demo_fleet"], body.signedin [data-i18n="demo_driver"] { display: none; }
+  .auth-top { display: flex; align-items: center; justify-content: space-between; }
+  .auth h1 { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; letter-spacing: -.03em; margin: .6rem 0 0; line-height: 1.15; }
+  .auth .lede { color: var(--fg-muted); margin: .2rem 0 0; font-size: .95rem; }
+  .auth-tabs { display: flex; background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 4px; }
+  .auth-tabs button { flex: 1; border: none; background: transparent; padding: .6rem; border-radius: 9px; font-family: var(--font-body); font-weight: 700; font-size: .9rem; color: var(--fg-muted); cursor: pointer; }
+  .auth-tabs button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.1rem 1rem .4rem; box-shadow: var(--shadow); }
+  .auth .field input { width: 100%; }
+  .role-pick { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: .9rem; }
+  .role-pick button { border: 1.5px solid var(--border); background: var(--surface); border-radius: 12px; padding: .75rem .7rem; text-align: left; cursor: pointer; font-family: var(--font-body); color: var(--fg); }
+  .role-pick button b { display: block; font-size: .95rem; }
+  .role-pick button span { display: block; font-size: .76rem; color: var(--fg-muted); line-height: 1.35; margin-top: .15rem; }
+  .role-pick button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .auth-err { display: none; background: var(--alert-soft); color: var(--alert); border-radius: 10px; padding: .6rem .75rem; font-size: .85rem; font-weight: 600; margin-bottom: .7rem; }
+  .auth-err.show { display: block; }
+  .auth-alt { text-align: center; font-size: .85rem; color: var(--fg-muted); }
+  .auth-alt button { border: none; background: none; color: var(--accent); font-weight: 700; cursor: pointer; font-family: var(--font-body); font-size: .85rem; padding: .3rem; }
+  .drv-btn[disabled] { opacity: .6; pointer-events: none; }
+
+  /* Account panels */
+  .code-box { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--accent-soft); border: 1.5px dashed var(--accent); border-radius: 12px; padding: .8rem .9rem; margin: .4rem 0 .6rem; }
+  .code-box .code { font-family: var(--font-display); font-weight: 800; font-size: 1.45rem; letter-spacing: .08em; color: var(--fg); }
+  .code-box .lbl { font-size: .72rem; color: var(--fg-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .mini-btn { border: 1px solid var(--border); background: var(--surface); color: var(--fg); border-radius: 9px; padding: .45rem .65rem; font-family: var(--font-body); font-weight: 700; font-size: .78rem; cursor: pointer; white-space: nowrap; }
+  .mini-btn.danger { color: var(--alert); }
+  .acct-row { display: flex; align-items: center; gap: .7rem; padding: .7rem 0; border-top: 1px solid var(--border); }
+  .acct-row:first-child { border-top: none; }
+  .acct-row .who { flex: 1; min-width: 0; }
+  .acct-row .nm { font-weight: 700; font-size: .9rem; }
+  .acct-row .sub { font-size: .78rem; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acct-row.off .nm, .acct-row.off .sub { opacity: .55; }
+  .empty-state { margin: 1rem 16px; padding: 1.4rem 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; text-align: center; color: var(--fg-muted); font-size: .9rem; }
+  .empty-state h3 { margin: 0 0 .3rem; color: var(--fg); font-family: var(--font-display); font-size: 1.1rem; }
+  .empty-state .code { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: .08em; color: var(--accent); margin-top: .5rem; }
 </style>
 </head>
-<body>
+<body class="authgate">
+<!-- ============ LOGIN / SIGN UP ============ -->
+<div class="auth" id="auth">
+  <div class="auth-top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/><circle cx="7.5" cy="17.5" r="1.9"/><circle cx="17.5" cy="17.5" r="1.9"/></svg>
+      </span>
+      Fleet<span class="pulse">Pulse</span>
+    </div>
+    <button class="lang-btn" id="lang-auth" onclick="toggleLang()">FIL</button>
+  </div>
+  <div>
+    <h1 id="auth-h">Welcome back</h1>
+    <p class="lede" id="auth-p">Log in to see your trucks or start your shift.</p>
+  </div>
+
+  <div class="auth-tabs" role="tablist">
+    <button class="on" id="at-login" onclick="authMode('login')" data-i18n="a_tab_login">Log in</button>
+    <button id="at-signup" onclick="authMode('signup')" data-i18n="a_tab_signup">Create account</button>
+  </div>
+
+  <form class="auth-card" id="auth-form" onsubmit="submitAuth(event)" novalidate>
+    <div class="auth-err" id="auth-err" role="alert"></div>
+
+    <div id="signup-role" style="display:none">
+      <div class="role-pick">
+        <button type="button" class="on" id="rp-op" onclick="pickRole('operator')"><b data-i18n="a_role_op">Operator</b><span data-i18n="a_role_op_d">I own or manage the trucks</span></button>
+        <button type="button" id="rp-drv" onclick="pickRole('driver')"><b data-i18n="a_role_drv">Driver</b><span data-i18n="a_role_drv_d">I drive and have an invite code</span></button>
+      </div>
+    </div>
+
+    <div class="field su" style="display:none"><label for="f-name" data-i18n="a_name">Your name</label><input id="f-name" autocomplete="name"></div>
+    <div class="field su op" style="display:none"><label for="f-company" data-i18n="a_company">Company / fleet name</label><input id="f-company" autocomplete="organization"></div>
+    <div class="field su drv" style="display:none"><label for="f-code" data-i18n="a_code">Invite code from your operator</label><input id="f-code" placeholder="ABCD-1234" autocapitalize="characters" autocomplete="off" spellcheck="false"></div>
+    <div class="field su drv" style="display:none"><label for="f-plate" data-i18n="a_plate">Truck plate number</label><input id="f-plate" placeholder="NBC 4521" autocapitalize="characters" autocomplete="off" spellcheck="false"></div>
+    <div class="field"><label for="f-email">Email</label><input id="f-email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label for="f-pass" data-i18n="a_pass">Password</label><input id="f-pass" type="password" autocomplete="current-password"></div>
+    <button type="submit" class="drv-btn go" id="auth-submit" style="margin-top:.2rem"><span id="auth-submit-txt">Log in</span></button>
+  </form>
+
+  <div class="auth-alt"><span data-i18n="a_demo_q">Just looking?</span> <button type="button" onclick="enterDemo()" data-i18n="a_demo">View the demo</button></div>
+</div>
+
 <div class="roleswitch" role="tablist" aria-label="Demo view">
   <button class="on" id="rs-op" onclick="setRole('operator')" data-i18n="role_op">Operator view</button>
   <button id="rs-drv" onclick="setRole('driver')" data-i18n="role_drv">Driver view</button>
@@ -331,7 +415,7 @@
   </header>
 
   <div class="trucks" id="trucks"></div>
-  <div class="conn-status" id="conn-status"><span class="d"></span><span id="conn-text">Demo mode</span><span class="sp"></span><button onclick="go('fleet')" id="conn-link">Connect backend</button></div>
+  <div class="conn-status" id="conn-status"><span class="d"></span><span id="conn-text">Demo mode</span><span class="sp"></span><button onclick="connLinkClick()" id="conn-link">Log in</button></div>
 
   <main class="feed">
     <section class="view active" id="view-home" data-view="home"></section>
@@ -373,26 +457,38 @@
 
     <!-- FLEET / SETTINGS -->
     <section class="view" id="view-fleet" data-view="fleet">
-      <div class="view-head"><h2>NBC 4521</h2><p data-i18n="fleet_p">Ramon Villanueva · Manila–Batangas lane</p></div>
+      <div class="view-head"><h2 id="fleet-h">NBC 4521</h2><p id="fleet-sub" data-i18n="fleet_p">Ramon Villanueva · Manila–Batangas lane</p></div>
       <div class="stats">
-        <div class="stat"><div class="v on">3</div><div class="k" data-i18n="st_active">Active</div></div>
-        <div class="stat"><div class="v">1</div><div class="k" data-i18n="st_idle">Idle</div></div>
-        <div class="stat"><div class="v">1</div><div class="k" data-i18n="st_offline">Offline</div></div>
+        <div class="stat"><div class="v on" id="st-on">3</div><div class="k" data-i18n="st_active">Active</div></div>
+        <div class="stat"><div class="v" id="st-idle">1</div><div class="k" data-i18n="st_idle">Idle</div></div>
+        <div class="stat"><div class="v" id="st-off">1</div><div class="k" data-i18n="st_offline">Offline</div></div>
       </div>
-      <div class="banner">
+      <div class="banner" id="fleet-banner">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         <span data-i18n="fleet_banner">Ramon's driver app linked on Mar 3, 2026</span>
       </div>
 
-      <div class="grouplabel" data-i18n="g_backend">Backend connection</div>
-      <div class="pad">
-        <div class="field" style="margin-top:.4rem"><label data-i18n="f_backend">Backend URL (Cloudflare Worker)</label>
-          <input id="a-backend" placeholder="https://fleetpulse-api.xxx.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-        <div style="display:flex; gap:.5rem">
-          <button class="drv-btn go" style="margin-top:0; flex:1" onclick="connectBackend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/><path d="M4 12h11"/></svg><span data-i18n="b_connect">Go live</span></button>
-          <button class="drv-btn" style="margin-top:0; flex:0 0 auto" onclick="disconnectBackend()" data-i18n="b_demo">Demo</button>
+      <div id="op-account">
+        <div class="grouplabel" data-i18n="g_invite">Invite your drivers</div>
+        <div class="pad">
+          <div class="code-box">
+            <div><div class="lbl" data-i18n="inv_lbl">Invite code</div><div class="code" id="inv-code">—</div></div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end">
+              <button class="mini-btn" onclick="copyInvite()" data-i18n="inv_copy">Copy</button>
+              <button class="mini-btn" onclick="rotateInvite()" data-i18n="inv_new">New code</button>
+            </div>
+          </div>
+          <div class="demo-flag" style="padding:0 0 .3rem;text-align:left" data-i18n="inv_hint">Drivers enter this code when they create their account in the FleetPulse app. Make a new code anytime — the old one stops working.</div>
         </div>
-        <div class="demo-flag" style="padding:.7rem 0 .2rem; text-align:left" data-i18n="b_hint">Iwanang blanko para sa demo. Ilagay ang Worker URL para mag-live sa totoong GPS.</div>
+        <div class="grouplabel" data-i18n="g_drivers">Drivers</div>
+        <div class="pad" id="drv-list"><div class="demo-flag" style="text-align:left">…</div></div>
+        <div class="grouplabel" data-i18n="g_account">Account</div>
+        <div class="pad">
+          <div class="acct-row"><div class="who"><div class="nm" id="op-name">—</div><div class="sub" id="op-email">—</div></div><button class="mini-btn danger" onclick="signOut()" data-i18n="logout">Log out</button></div>
+        </div>
+      </div>
+      <div id="op-demo-login" class="pad" style="display:none">
+        <button class="drv-btn go" style="margin-top:.4rem" onclick="showAuth()"><span data-i18n="demo_login">Log in or create an account</span></button>
       </div>
 
       <div class="grouplabel" data-i18n="g_loc">Location &amp; trips</div>
@@ -510,7 +606,7 @@
     <div class="hi" id="drv-hi">Hi, Ramon 👋</div>
     <div class="right">
       <button class="lang-btn on-ink" id="lang-drv" onclick="toggleLang()">FIL</button>
-      <div class="plate-badge">NBC 4521</div>
+      <div class="plate-badge" id="drv-plate">NBC 4521</div>
     </div>
   </header>
 
@@ -524,14 +620,13 @@
       </div>
       <button class="drv-btn warn" id="shiftBtn" onclick="toggleShift()"></button>
 
-      <div class="drv-label" data-i18n="d_setup">Dispatch connection</div>
-      <div class="pad" style="padding-left:0;padding-right:0">
-        <div class="field"><label data-i18n="d_setup_url">Backend URL</label>
-          <input id="drv-backend" placeholder="https://fleetpulse-api.xxx.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-        <div class="field"><label data-i18n="d_setup_id">Truck / Driver ID</label>
-          <input id="drv-id" value="NBC-4521" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
-        <button class="drv-btn go" style="margin-top:0" onclick="saveDriverSetup()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n="d_setup_save">Save &amp; send GPS</span></button>
-        <div class="demo-flag" id="geo-status" style="padding:.6rem 0 .2rem; text-align:left"></div>
+      <div class="demo-flag" id="geo-status" style="padding:.6rem 0 .2rem; text-align:left"></div>
+
+      <div class="drv-label" data-i18n="d_account">Your account</div>
+      <div class="drv-info" id="drv-account">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        <div class="bd"><div class="h" id="drv-acc-name">—</div><div class="d" id="drv-acc-sub">—</div></div>
+        <button class="mini-btn danger" onclick="signOut()" data-i18n="logout">Log out</button>
       </div>
 
       <div class="drv-label" data-i18n="d_curtrip">Current trip</div>
@@ -662,9 +757,9 @@
     g_backend:{en:'Backend connection',fil:'Koneksyon sa backend'}, f_backend:{en:'Backend URL (Cloudflare Worker)',fil:'Backend URL (Cloudflare Worker)'},
     b_connect:{en:'Go live',fil:'Mag-live'}, b_demo:{en:'Demo',fil:'Demo'},
     b_hint:{en:'Leave blank for demo. Paste your Worker URL to go live with real GPS.',fil:'Iwanang blanko para sa demo. Ilagay ang Worker URL para mag-live sa totoong GPS.'},
-    conn_demo:{en:'Demo mode · sample data',fil:'Demo mode · sample na data'}, conn_live:{en:'Live · connected to backend',fil:'Live · nakakonekta sa backend'},
+    conn_demo:{en:'Demo · sample data',fil:'Demo · sample na data'}, conn_live:{en:'Live · connected to backend',fil:'Live · nakakonekta sa backend'},
     conn_connecting:{en:'Connecting…',fil:'Kumokonekta…'}, conn_err:{en:'Backend unreachable · showing demo',fil:'Di maabot ang backend · demo muna'},
-    conn_link:{en:'Connect backend',fil:'Ikonekta'}, conn_waiting:{en:'Live · waiting for first GPS ping',fil:'Live · hinihintay ang unang GPS'},
+    conn_link:{en:'Log in',fil:'Mag-login'}, conn_waiting:{en:'Live · waiting for first GPS ping',fil:'Live · hinihintay ang unang GPS'},
     trips_h:{en:'Trips',fil:'Biyahe'}, trips_p:{en:"Active runs and today's completed routes",fil:'Mga aktibong biyahe at tapos nang ruta ngayon'},
     trips_assign:{en:'Assign new trip',fil:'Mag-assign ng biyahe'}, trips_g_active:{en:'Active',fil:'Aktibo'}, trips_g_done:{en:'Completed today',fil:'Tapos ngayong araw'},
     trips_demo:{en:'Tap a completed trip to replay its route',fil:'I-tap ang tapos na biyahe para i-replay ang ruta'},
@@ -724,6 +819,40 @@
   };
   function t(k){ var s=STR[k]; return s ? (s[lang]||s.en) : k; }
   function L(o){ return o ? (o[lang]||o.en) : ''; }
+
+  // Accounts / login strings
+  Object.assign(STR, {
+    a_tab_login:{en:'Log in',fil:'Mag-login'}, a_tab_signup:{en:'Create account',fil:'Gumawa ng account'},
+    a_h_login:{en:'Welcome back',fil:'Maligayang pagbabalik'}, a_p_login:{en:'Log in to see your trucks or start your shift.',fil:'Mag-login para makita ang trucks mo o simulan ang shift.'},
+    a_h_signup:{en:'Create your account',fil:'Gumawa ng account'}, a_p_signup:{en:'Operators see their whole fleet. Drivers only share their own location.',fil:'Nakikita ng operator ang buong fleet. Ang driver ay sariling lokasyon lang ang pinapadala.'},
+    a_role_op:{en:'Operator',fil:'Operator'}, a_role_op_d:{en:'I own or manage the trucks',fil:'Ako ang may-ari o nagma-manage ng trucks'},
+    a_role_drv:{en:'Driver',fil:'Driver'}, a_role_drv_d:{en:'I drive and have an invite code',fil:'Driver ako at may invite code'},
+    a_name:{en:'Your name',fil:'Pangalan mo'}, a_company:{en:'Company / fleet name',fil:'Pangalan ng kumpanya / fleet'},
+    a_code:{en:'Invite code from your operator',fil:'Invite code mula sa operator mo'}, a_plate:{en:'Truck plate number',fil:'Plate number ng truck'},
+    a_pass:{en:'Password',fil:'Password'}, a_pass_new:{en:'Password (at least 8 characters)',fil:'Password (8 characters pataas)'},
+    a_btn_login:{en:'Log in',fil:'Mag-login'}, a_btn_signup:{en:'Create account',fil:'Gumawa ng account'}, a_wait:{en:'Please wait…',fil:'Sandali lang…'},
+    a_demo_q:{en:'Just looking?',fil:'Titingin lang?'}, a_demo:{en:'View the demo',fil:'Tingnan ang demo'},
+    a_err_net:{en:"Can't reach the server. Check your internet and try again.",fil:'Hindi maabot ang server. I-check ang internet at subukan ulit.'},
+    a_err_fill:{en:'Please fill in all fields.',fil:'Pakipunan lahat ng fields.'},
+    a_expired:{en:'Your session ended. Please log in again.',fil:'Natapos ang session mo. Mag-login ulit.'},
+    g_invite:{en:'Invite your drivers',fil:'I-invite ang drivers mo'}, inv_lbl:{en:'Invite code',fil:'Invite code'},
+    inv_copy:{en:'Copy',fil:'Kopyahin'}, inv_new:{en:'New code',fil:'Bagong code'},
+    inv_hint:{en:'Drivers enter this code when they create their account in the FleetPulse app. Make a new code anytime — the old one stops working.',fil:'Ilalagay ito ng driver kapag gumawa siya ng account sa FleetPulse app. Puwede kang gumawa ng bagong code anumang oras — hindi na gagana ang luma.'},
+    inv_copied:{en:'Invite code copied',fil:'Nakopya ang invite code'}, inv_rotated:{en:'New invite code ready. The old one no longer works.',fil:'May bagong invite code na. Hindi na gagana ang luma.'},
+    inv_confirm:{en:'Make a new invite code? Drivers who haven’t signed up yet will need the new one.',fil:'Gumawa ng bagong invite code? Kailangan ng bagong code ang drivers na hindi pa nakaka-signup.'},
+    g_drivers:{en:'Drivers',fil:'Mga driver'}, g_account:{en:'Account',fil:'Account'}, logout:{en:'Log out',fil:'Mag-logout'},
+    no_drivers:{en:'No drivers yet. Share your invite code above.',fil:'Wala pang driver. Ibigay ang invite code sa itaas.'},
+    drv_never:{en:'No GPS yet',fil:'Wala pang GPS'}, drv_last:{en:'Last GPS ',fil:'Huling GPS '}, drv_off:{en:'Deactivated',fil:'Naka-deactivate'},
+    drv_deact:{en:'Remove',fil:'Alisin'}, drv_react:{en:'Restore',fil:'Ibalik'},
+    drv_deact_q:{en:'Remove this driver? They will be logged out and can no longer send GPS.',fil:'Alisin ang driver na ito? Mala-logout siya at hindi na makakapagpadala ng GPS.'},
+    demo_login:{en:'Log in or create an account',fil:'Mag-login o gumawa ng account'},
+    d_account:{en:'Your account',fil:'Account mo'},
+    empty_h:{en:'No trucks on the map yet',fil:'Wala pang truck sa mapa'},
+    empty_p:{en:'Give your drivers this invite code. Their truck shows up here once they start a shift.',fil:'Ibigay sa drivers mo ang invite code na ito. Lalabas dito ang truck nila kapag nag-start na sila ng shift.'},
+    geo_off:{en:'Start your shift to share your location with dispatch.',fil:'I-start ang shift para i-share ang lokasyon mo sa dispatch.'},
+    tst_addtruck:{en:'Add a truck: give the driver your invite code (Fleet tab). Their truck appears once they start a shift.',fil:'Magdagdag ng truck: ibigay sa driver ang invite code (Fleet tab). Lalabas ang truck kapag nag-start siya ng shift.'},
+    geo_nourl:{en:'Start your shift to share your location with dispatch.',fil:'I-start ang shift para i-share ang lokasyon mo sa dispatch.'}
+  });
 
   // ===================== Data =====================
   var trucks = [
@@ -805,6 +934,11 @@
 
   function renderFeed(){
     var html = '';
+    if(isOperator() && feed.length===0){
+      var code = (SESSION.fleet && SESSION.fleet.joinCode) || '';
+      document.getElementById('view-home').innerHTML = '<div class="empty-state"><h3>'+t('empty_h')+'</h3><div>'+t('empty_p')+'</div>'+(code?'<div class="code">'+esc(code)+'</div>':'')+'</div>';
+      return;
+    }
     feed.forEach(function(p){
       html += '<article class="card">';
       html += '<div class="card-head"><div class="av-sm" style="background:'+p.color+'">'+p.plate+'</div>'
@@ -936,7 +1070,7 @@
   function pbStop(){ pbPause(); }
 
   // ===================== Nav / settings / shift =====================
-  function go(view){
+  function go(view){ if(view==='fleet') loadDrivers();
     document.querySelectorAll('.app .view').forEach(function(v){ v.classList.toggle('active', v.dataset.view===view); });
     var tab = (view==='assign'||view==='playback') ? 'trips' : view;
     document.querySelectorAll('.tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.tab===tab); });
@@ -968,35 +1102,27 @@
       btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9z"/></svg> '+t('shift_btn_start');
     }
   }
-  function toggleShift(){ onShift=!onShift; setShiftUI(); toast(onShift ? (lang==='fil'?'Nagsimula ang shift · naka-share ang lokasyon':'Shift started · sharing location') : (lang==='fil'?'Tapos ang shift · naka-off ang location':'Shift ended · location sharing off')); if(onShift) startGeo(); else stopGeo(); }
+  function toggleShift(){ onShift=!onShift; try{ localStorage.setItem('fp-onshift', onShift?'1':'0'); }catch(e){} setShiftUI(); toast(onShift ? (lang==='fil'?'Nagsimula ang shift · naka-share ang lokasyon':'Shift started · sharing location') : (lang==='fil'?'Tapos ang shift · naka-off ang location':'Shift ended · location sharing off')); if(onShift) startGeo(); else stopGeo(); }
 
   // ===================== Driver browser GPS (PWA) =====================
   // Nagpapadala ng totoong lokasyon sa backend habang naka-shift ang driver.
   // Browser geolocation: gumagana habang bukas ang app (foreground).
-  var driverId='NBC-4521', geoWatch=null, geoActive=false;
+  var geoWatch=null, geoActive=false;
   function geoStatus(key){ var el=document.getElementById('geo-status'); if(el) el.textContent=t(key); }
-  function saveDriverSetup(){
-    var url=(document.getElementById('drv-backend').value||'').trim();
-    var id=(document.getElementById('drv-id').value||'').trim().toUpperCase();
-    if(url && !/^https?:\/\//.test(url)) url='https://'+url;
-    if(url){ API.baseUrl=url; try{ localStorage.setItem('fp-backend', url); }catch(e){} }
-    if(id){ driverId=id; try{ localStorage.setItem('fp-driverid', id); }catch(e){} }
-    toast(lang==='fil'?'Na-save ang setup':'Setup saved');
-    if(onShift) startGeo(); else geoStatus('geo_nourl');
-  }
+  // Ang driver ID ay galing sa login session (server ang nagtatakda), hindi na tina-type.
   function sendGeoPing(pos){
-    if(!API.baseUrl) return;
+    if(!isDriver()) return;
     var c=pos.coords;
-    fetch(API.baseUrl.replace(/\/$/,'')+'/api/ping', {
-      method:'POST', headers:{'Content-Type':'application/json'}, keepalive:true,
-      body:JSON.stringify({ driverId:driverId, lat:c.latitude, lng:c.longitude, speed:(c.speed!=null?c.speed:null), heading:(c.heading!=null?c.heading:null), accuracy:c.accuracy, ts:Date.now() })
+    apiFetch('/api/ping', {
+      method:'POST', keepalive:true,
+      body:{ lat:c.latitude, lng:c.longitude, speed:(c.speed!=null?c.speed:null), heading:(c.heading!=null?c.heading:null), accuracy:c.accuracy, ts:Date.now() }
     }).then(function(){ geoActive=true; geoStatus('geo_sending'); })
       .catch(function(e){ console.warn('[FleetPulse] ping failed', e); });
   }
   function startGeo(){
     if(!document.body.classList.contains('driver')) return;      // driver app lang
+    if(!isDriver()){ geoStatus('geo_off'); return; }             // demo: walang ipapadala
     if(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()){ geoStatus('geo_sending'); return; } // native: plugin ang bahala
-    if(!API.baseUrl){ geoStatus('geo_nourl'); return; }
     if(!('geolocation' in navigator)){ geoStatus('geo_unsupported'); return; }
     if(geoWatch!=null) return;
     geoStatus('geo_waiting');
@@ -1017,9 +1143,11 @@
   function applyLang(){
     document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
     document.querySelectorAll('[data-i18n-ph]').forEach(function(el){ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
-    document.getElementById('drv-hi').textContent = t('d_hi');
+    document.getElementById('drv-hi').textContent = (SESSION && SESSION.user) ? ((lang==='fil'?'Kumusta, ':'Hi, ')+firstName(SESSION.user.name)+' 👋') : t('d_hi');
     document.getElementById('lang-op').textContent = lang==='en' ? 'FIL' : 'EN';
     document.getElementById('lang-drv').textContent = lang==='en' ? 'FIL' : 'EN';
+    document.getElementById('lang-auth').textContent = lang==='en' ? 'FIL' : 'EN';
+    renderAuthText(); renderAccount();
     setShiftUI();
     renderTrucks(); renderFeed(); renderNotifs(); renderTrips(); syncDriverTrip();
     if(pbTrip) renderPbMeta();
@@ -1082,8 +1210,13 @@
 
   // --- Convert live rows into the dashboard's data + render everything ---
   function applyFleet(rows){
+    // Galing sa signup ng driver ang pangalan/plate — linisin bago ilagay sa HTML
+    rows = (rows||[]).map(function(r){ var o={}; for(var k in r) o[k]=r[k]; o.plate=safeTxt(r.plate); o.driverName=safeTxt(r.driverName); o.driverId=safeTxt(r.driverId); return o; });
     lastFleet = rows;
-    if(!rows || rows.length===0){ connState='waiting'; renderConnStatus(); return; }
+    var cnt={moving:0,idle:0,offline:0};
+    lastFleet.forEach(function(r){ cnt[statusOf(r)]++; });
+    setText('st-on', cnt.moving); setText('st-idle', cnt.idle); setText('st-off', cnt.offline);
+    if(lastFleet.length===0){ connState='waiting'; renderConnStatus(); feed=[]; trucks=[]; renderTrucks(); renderFeed(); return; }
     connState='live'; renderConnStatus();
     var proj=projectNorm(rows);
 
@@ -1138,48 +1271,223 @@
     }
   }
 
-  function pollFleet(){
-    if(!API.baseUrl) return;
-    fetch(API.baseUrl.replace(/\/$/,'')+'/api/fleet', { headers:{'Accept':'application/json'} })
-      .then(function(res){ if(!res.ok) throw new Error('HTTP '+res.status); return res.json(); })
-      .then(function(data){ applyFleet(data.fleet||[]); })
-      .catch(function(e){ console.warn('[FleetPulse] fleet fetch failed', e); connState='err'; renderConnStatus(); });
+  // ===================== ACCOUNTS (login / signup) =====================
+  // Naka-save ang session sa phone: { token, user:{id,role,name,email,plate}, fleet:{id,name,joinCode?} }
+  var FP_API_DEFAULT = 'https://fleetpulse-api.fernandojrpalermo-work.workers.dev';
+  var SESSION = null, authView = 'login', signupRole = 'operator', demoMode = false;
+
+  function isDriver(){ return !!(SESSION && SESSION.user && SESSION.user.role==='driver'); }
+  function isOperator(){ return !!(SESSION && SESSION.user && SESSION.user.role==='operator'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function safeTxt(s){ return String(s==null?'':s).replace(/[<>"'`\\&]/g, ''); }
+  function setText(id, v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+  function firstName(n){ return String(n||'').split(' ')[0]; }
+
+  function saveSession(s){ SESSION=s; try{ if(s) localStorage.setItem('fp-session', JSON.stringify(s)); else localStorage.removeItem('fp-session'); }catch(e){} }
+  function loadSession(){ try{ var s=JSON.parse(localStorage.getItem('fp-session')||'null'); if(s && s.token && s.user) return s; }catch(e){} return null; }
+
+  // Lahat ng tawag sa API ay dumadaan dito para may kasamang login token
+  function apiFetch(path, opts){
+    opts = opts || {};
+    var headers = { 'Accept':'application/json' };
+    if(opts.body) headers['Content-Type']='application/json';
+    if(SESSION && SESSION.token) headers['Authorization']='Bearer '+SESSION.token;
+    return fetch(API.baseUrl.replace(/\/$/,'')+path, { method:opts.method||'GET', headers:headers, keepalive:!!opts.keepalive, body:opts.body?JSON.stringify(opts.body):undefined })
+      .then(function(res){
+        return res.json().catch(function(){ return {}; }).then(function(data){
+          if(res.status===401 && SESSION && !opts.noAuthRedirect){ signOut(true); }
+          if(!res.ok){ var e=new Error(data.message||('HTTP '+res.status)); e.status=res.status; e.code=data.error; throw e; }
+          return data;
+        });
+      });
   }
 
-  function startPolling(){ if(pollTimer) clearInterval(pollTimer); pollFleet(); pollTimer=setInterval(pollFleet, 10000); }
-  function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-
-  function connectBackend(){
-    var url=(document.getElementById('a-backend').value||'').trim();
-    if(!url){ toast(lang==='fil'?'Maglagay muna ng Worker URL':'Enter a Worker URL first'); return; }
-    if(!/^https?:\/\//.test(url)) url='https://'+url;
-    API.baseUrl=url; try{ localStorage.setItem('fp-backend', url); }catch(e){}
-    connState='connecting'; renderConnStatus();
-    toast(lang==='fil'?'Kumokonekta sa backend…':'Connecting to backend…');
-    startPolling();
-    go('home');
+  function showAuth(){
+    demoMode=false; stopPolling(); stopGeo();
+    document.body.classList.add('authgate'); document.body.classList.remove('signedin','driver');
+    authMode(authView); window.scrollTo(0,0);
   }
-  function disconnectBackend(){
-    stopPolling(); API.baseUrl='';
-    try{ localStorage.removeItem('fp-backend'); }catch(e){}
-    toast(lang==='fil'?'Bumalik sa demo mode':'Back to demo mode');
-    try{ localStorage.setItem('fp-view','fleet'); }catch(e){}
+  function authMode(mode){
+    authView=mode;
+    document.getElementById('at-login').classList.toggle('on', mode==='login');
+    document.getElementById('at-signup').classList.toggle('on', mode==='signup');
+    document.getElementById('signup-role').style.display = mode==='signup' ? '' : 'none';
+    document.getElementById('f-pass').setAttribute('autocomplete', mode==='signup' ? 'new-password' : 'current-password');
+    authErr(''); pickRole(signupRole); renderAuthText();
+  }
+  function pickRole(role){
+    signupRole=role;
+    document.getElementById('rp-op').classList.toggle('on', role==='operator');
+    document.getElementById('rp-drv').classList.toggle('on', role==='driver');
+    document.querySelectorAll('#auth-form .su').forEach(function(el){
+      var show = authView==='signup' && (!el.classList.contains('op') || role==='operator') && (!el.classList.contains('drv') || role==='driver');
+      el.style.display = show ? '' : 'none';
+    });
+  }
+  function renderAuthText(){
+    if(!document.getElementById('auth-h')) return;
+    setText('auth-h', t(authView==='signup'?'a_h_signup':'a_h_login'));
+    setText('auth-p', t(authView==='signup'?'a_p_signup':'a_p_login'));
+    setText('auth-submit-txt', t(authView==='signup'?'a_btn_signup':'a_btn_login'));
+    var pl=document.querySelector('label[for="f-pass"]'); if(pl) pl.textContent=t(authView==='signup'?'a_pass_new':'a_pass');
+  }
+  function authErr(msg){ var el=document.getElementById('auth-err'); el.textContent=msg||''; el.classList.toggle('show', !!msg); }
+  function val(id){ return (document.getElementById(id).value||'').trim(); }
+
+  function submitAuth(ev){
+    if(ev) ev.preventDefault();
+    var email=val('f-email'), password=document.getElementById('f-pass').value||'';
+    var path, body;
+    if(authView==='login'){
+      if(!email || !password){ authErr(t('a_err_fill')); return; }
+      path='/api/auth/login'; body={ email:email, password:password };
+    } else if(signupRole==='operator'){
+      body={ name:val('f-name'), company:val('f-company'), email:email, password:password };
+      if(!body.name || !body.company || !email || !password){ authErr(t('a_err_fill')); return; }
+      path='/api/auth/signup-operator';
+    } else {
+      body={ name:val('f-name'), inviteCode:val('f-code'), plate:val('f-plate'), email:email, password:password };
+      if(!body.name || !body.inviteCode || !body.plate || !email || !password){ authErr(t('a_err_fill')); return; }
+      path='/api/auth/signup-driver';
+    }
+    var btn=document.getElementById('auth-submit'); btn.disabled=true; setText('auth-submit-txt', t('a_wait')); authErr('');
+    apiFetch(path, { method:'POST', body:body, noAuthRedirect:true })
+      .then(function(data){
+        document.getElementById('f-pass').value='';
+        saveSession({ token:data.token, user:data.user, fleet:data.fleet });
+        enterApp();
+      })
+      .catch(function(e){ authErr(e.status ? e.message : t('a_err_net')); })
+      .then(function(){ btn.disabled=false; renderAuthText(); });
+  }
+
+  function clearSampleData(){
+    trucks=[]; feed=[]; notifs=[]; lastFleet=[];
+    var sheet=document.getElementById('fleet-sheet-list'); if(sheet) sheet.innerHTML='';
+    var pins=document.getElementById('fullmap-pins'); if(pins) pins.innerHTML='';
+    setText('st-on',0); setText('st-idle',0); setText('st-off',0);
+  }
+
+  // Pagkatapos mag-login: ang ROLE ng account ang nagdedesisyon kung anong screen ang lalabas
+  function enterApp(){
+    demoMode=false;
+    document.body.classList.remove('authgate'); document.body.classList.add('signedin');
+    clearSampleData();
+    var u=SESSION.user;
+    if(u.role==='driver'){
+      try{ onShift = localStorage.getItem('fp-onshift')==='1'; }catch(e){ onShift=false; }
+      setRole('driver');
+      setText('drv-plate', u.plate||'');
+    } else {
+      stopGeo(); setRole('operator');
+      connState='connecting'; startPolling(); loadDrivers();
+    }
+    applyLang();
+    if(window.fpNativeSync) window.fpNativeSync();
+  }
+
+  function enterDemo(){
+    demoMode=true; saveSession(null);
+    document.body.classList.remove('authgate','signedin');
+    location.hash='demo';
     location.reload();
   }
 
+  function signOut(expired){
+    var tok = SESSION && SESSION.token;
+    stopPolling(); stopGeo();
+    if(window.fpNativeStop) window.fpNativeStop();
+    if(tok){ fetch(API.baseUrl.replace(/\/$/,'')+'/api/auth/logout', { method:'POST', headers:{ 'Authorization':'Bearer '+tok } }).catch(function(){}); }
+    saveSession(null);
+    try{ localStorage.removeItem('fp-onshift'); localStorage.removeItem('fp-role'); localStorage.removeItem('fp-view'); }catch(e){}
+    if(expired){ try{ sessionStorage.setItem('fp-expired','1'); }catch(e){} }
+    location.hash=''; location.reload();
+  }
+
+  // ---- Operator: invite code + drivers ----
+  var driversCache = null;
+  function renderAccount(){
+    var signed=!!SESSION;
+    var opAcc=document.getElementById('op-account'), opDemo=document.getElementById('op-demo-login');
+    if(opAcc) opAcc.style.display = isOperator() ? '' : 'none';
+    if(opDemo) opDemo.style.display = signed ? 'none' : '';
+    var banner=document.getElementById('fleet-banner'); if(banner) banner.style.display = signed ? 'none' : '';
+    if(isOperator()){
+      setText('fleet-h', (SESSION.fleet && SESSION.fleet.name) || 'FleetPulse');
+      setText('fleet-sub', SESSION.user.name + (driversCache ? ' · '+driversCache.filter(function(d){return d.active;}).length+(lang==='fil'?' driver':(driversCache.filter(function(d){return d.active;}).length===1?' driver':' drivers')) : ''));
+      setText('inv-code', (SESSION.fleet && SESSION.fleet.joinCode) || '—');
+      setText('op-name', SESSION.user.name); setText('op-email', SESSION.user.email);
+      renderDriverList();
+    }
+    if(isDriver()){
+      setText('drv-acc-name', SESSION.user.name + (SESSION.user.plate ? ' · '+SESSION.user.plate : ''));
+      setText('drv-acc-sub', ((SESSION.fleet && SESSION.fleet.name) || '') + ' · ' + SESSION.user.email);
+    }
+    var da=document.getElementById('drv-account'); if(da) da.style.display = isDriver() ? '' : 'none';
+  }
+  function renderDriverList(){
+    var box=document.getElementById('drv-list'); if(!box) return;
+    if(!driversCache){ box.innerHTML='<div class="demo-flag" style="text-align:left">…</div>'; return; }
+    if(driversCache.length===0){ box.innerHTML='<div class="demo-flag" style="text-align:left">'+t('no_drivers')+'</div>'; return; }
+    box.innerHTML = driversCache.map(function(d){
+      var sub = !d.active ? t('drv_off') : (d.lastPing ? t('drv_last')+relTime(d.lastPing) : t('drv_never'));
+      return '<div class="acct-row'+(d.active?'':' off')+'"><div class="av-sm" style="background:'+(d.active?'var(--accent)':'var(--fg-faint)')+'">'+esc((d.plate||'?').split(' ')[0].slice(0,3))+'</div>'
+        +'<div class="who"><div class="nm">'+esc(d.plate||'')+' · '+esc(d.name)+'</div><div class="sub">'+esc(sub)+' · '+esc(d.email)+'</div></div>'
+        +'<button class="mini-btn'+(d.active?' danger':'')+'" onclick="setDriverActive(\''+esc(d.id)+'\','+(d.active?'false':'true')+')">'+t(d.active?'drv_deact':'drv_react')+'</button></div>';
+    }).join('');
+  }
+  function loadDrivers(){
+    if(!isOperator()) return;
+    apiFetch('/api/drivers').then(function(d){ driversCache=d.drivers||[]; renderAccount(); }).catch(function(e){ console.warn('[FleetPulse] drivers', e); });
+  }
+  function setDriverActive(id, active){
+    if(!active && !confirm(t('drv_deact_q'))) return;
+    apiFetch('/api/drivers/'+encodeURIComponent(id)+'/'+(active?'activate':'deactivate'), { method:'POST' })
+      .then(function(){ loadDrivers(); pollFleet(); }).catch(function(e){ toast(e.message); });
+  }
+  function copyInvite(){
+    var code=(SESSION && SESSION.fleet && SESSION.fleet.joinCode) || ''; if(!code) return;
+    var done=function(){ toast(t('inv_copied')+' · '+code); };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(code).then(done, done); } else { done(); }
+  }
+  function rotateInvite(){
+    if(!confirm(t('inv_confirm'))) return;
+    apiFetch('/api/fleet/rotate-code', { method:'POST' }).then(function(d){
+      SESSION.fleet.joinCode=d.joinCode; saveSession(SESSION); renderAccount(); if(feed.length===0) renderFeed(); toast(t('inv_rotated'));
+    }).catch(function(e){ toast(e.message); });
+  }
+
+  function connLinkClick(){ if(SESSION) go('fleet'); else showAuth(); }
+
+  function pollFleet(){
+    if(!isOperator()) return;
+    apiFetch('/api/fleet')
+      .then(function(data){ applyFleet(data.fleet||[]); })
+      .catch(function(e){ if(e.status===401) return; console.warn('[FleetPulse] fleet fetch failed', e); connState='err'; renderConnStatus(); });
+  }
+  var pollCount = 0;
+  function startPolling(){ if(pollTimer) clearInterval(pollTimer); pollFleet(); pollTimer=setInterval(function(){ pollFleet(); if(++pollCount%6===0) loadDrivers(); }, 10000); }
+  function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
   // ===================== Init =====================
-  try{ var sb=localStorage.getItem('fp-backend'); if(sb){ API.baseUrl=sb; } }catch(e){}
+  try{ var sb=localStorage.getItem('fp-backend'); API.baseUrl = sb || FP_API_DEFAULT; }catch(e){ API.baseUrl = FP_API_DEFAULT; }
   try{ var sl=localStorage.getItem('fp-lang'); if(sl==='fil') lang='fil'; }catch(e){}
-  applyLang();
-  try{ var v = localStorage.getItem('fp-view'); if(v) go(v); }catch(e){}
-  try{ var r = localStorage.getItem('fp-role'); if(r==='driver') setRole('driver'); }catch(e){}
-  // Prefill backend input + go live if a URL was saved
-  if(API.baseUrl){ var bi=document.getElementById('a-backend'); if(bi) bi.value=API.baseUrl; connState='connecting'; renderConnStatus(); startPolling(); }
-  // Driver GPS setup: prefill + start if configured and on shift
-  try{ var sd=localStorage.getItem('fp-driverid'); if(sd) driverId=sd; }catch(e){}
-  (function(){ var du=document.getElementById('drv-backend'); if(du&&API.baseUrl) du.value=API.baseUrl; var di=document.getElementById('drv-id'); if(di) di.value=driverId; })();
-  geoStatus(API.baseUrl ? (onShift?'geo_waiting':'geo_offshift') : 'geo_off');
-  if(document.body.classList.contains('driver') && onShift) startGeo();
+  SESSION = loadSession();
+  if(SESSION){
+    enterApp();
+    // I-refresh ang account info (hal. bagong invite code, o kung na-deactivate)
+    apiFetch('/api/me').then(function(d){ SESSION.user=d.user; SESSION.fleet=d.fleet; saveSession(SESSION); applyLang(); }).catch(function(){});
+  } else if(location.hash==='#demo'){
+    demoMode=true; onShift=true;
+    document.body.classList.remove('authgate');
+    applyLang();
+    try{ var v = localStorage.getItem('fp-view'); if(v) go(v); }catch(e){}
+    try{ var r = localStorage.getItem('fp-role'); if(r==='driver') setRole('driver'); }catch(e){}
+    geoStatus('geo_off');
+  } else {
+    applyLang(); showAuth();
+    try{ if(sessionStorage.getItem('fp-expired')){ sessionStorage.removeItem('fp-expired'); authErr(t('a_expired')); } }catch(e){}
+  }
 </script>
   <script src="js/tracking.js"></script>
 </body>
