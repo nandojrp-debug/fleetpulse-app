@@ -1340,6 +1340,8 @@
   // ===================== LIVE MAP (Google Maps, o OpenStreetMap kung wala pang key) =====================
   // Ang Google Maps key ay naka-set sa Cloudflare Worker (variable: GOOGLE_MAPS_KEY) at kinukuha sa /api/config.
   // Isang beses lang nilo-load ang mapa kada bukas ng app (para tipid sa Google free tier).
+  // PAALALA: ang Leaflet ay naka-'LF' (hindi 'L') dahil 'L()' ang ginagamit ng app para sa translations.
+  var LF = null;
   var FPMap = { state:'idle', provider:null, map:null, markers:{}, info:null, rows:[], fitted:false, focusId:null };
 
   function gmapsLink(lat, lng){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(lat+','+lng); }
@@ -1374,7 +1376,7 @@
     if(FPMap.provider==='google'){ var el=document.getElementById('livemap'); el.innerHTML=''; FPMap.markers={}; FPMap.map=null; FPMap.fitted=false; }
     FPMap.provider='leaflet-loading';
     loadCss('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css');
-    loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', function(){ mapCreate('leaflet'); },
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', function(){ window.LF = window.L.noConflict ? window.L.noConflict() : window.L; mapCreate('leaflet'); },
       function(){ FPMap.state='error'; setText('livemap-msg', t('map_error')); });
   }
 
@@ -1386,8 +1388,8 @@
       FPMap.map=new google.maps.Map(el, { center:center, zoom:6, mapTypeControl:false, streetViewControl:false, fullscreenControl:false, clickableIcons:false, gestureHandling:'greedy' });
       FPMap.info=new google.maps.InfoWindow();
     } else {
-      FPMap.map=L.map(el, { zoomControl:true, attributionControl:true }).setView([center.lat, center.lng], 6);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(FPMap.map);
+      FPMap.map=LF.map(el, { zoomControl:true, attributionControl:true }).setView([center.lat, center.lng], 6);
+      LF.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(FPMap.map);
     }
     FPMap.state='ready';
     setText('livemap-msg', '');
@@ -1422,8 +1424,8 @@
         } else { m.setPosition(pos); m.setIcon(icon); m.setLabel(label); }
       } else {
         var html='<div style="width:34px;height:34px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);display:grid;place-items:center;color:#fff;font:800 11px sans-serif">'+esc(shortLbl(r))+'</div>';
-        var ic=L.divIcon({ html:html, className:'', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-16] });
-        if(!m){ m=L.marker([r.lat,r.lng], { icon:ic, title:r.plate||'' }).addTo(FPMap.map); FPMap.markers[r.driverId]=m; }
+        var ic=LF.divIcon({ html:html, className:'', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-16] });
+        if(!m){ m=LF.marker([r.lat,r.lng], { icon:ic, title:r.plate||'' }).addTo(FPMap.map); FPMap.markers[r.driverId]=m; }
         else { m.setLatLng([r.lat,r.lng]); m.setIcon(ic); }
         m.bindPopup(truckPopup(r));
       }
