@@ -15,6 +15,9 @@ workflows:
       - name: Add Android platform
         script: |
           npx cap add android || echo "android platform exists na"
+      - name: Generate app icon
+        script: |
+          npx @capacitor/assets@3.0.5 generate --android --assetPath assets || echo "icon generate skipped"
       - name: Patch location permissions
         script: |
           node patch-manifest.js
