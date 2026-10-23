@@ -363,7 +363,6 @@
       <button class="drv-btn go" style="margin-top:0" id="au-submit" onclick="authSubmit()"><span data-i18n="au_login">Log in</span></button>
     </div>
 
-    <p class="auth-foot"><span data-i18n="au_justlooking">Just looking?</span> <span class="auth-link" onclick="enterDemo()" data-i18n="au_demo">View the demo</span></p>
     <p class="auth-foot"><span class="auth-link" onclick="setRole('driver')" data-i18n="au_isdriver">I'm a driver — open driver view</span></p>
   </div>
 </div>
@@ -432,15 +431,11 @@
 
     <!-- FLEET / SETTINGS -->
     <section class="view" id="view-fleet" data-view="fleet">
-      <div class="view-head"><h2>NBC 4521</h2><p data-i18n="fleet_p">Ramon Villanueva · Manila–Batangas lane</p></div>
+      <div class="view-head"><h2 data-i18n="fleet_title">Fleet</h2><p data-i18n="fleet_sub">Your drivers and settings</p></div>
       <div class="stats">
-        <div class="stat"><div class="v on">3</div><div class="k" data-i18n="st_active">Active</div></div>
-        <div class="stat"><div class="v">1</div><div class="k" data-i18n="st_idle">Idle</div></div>
-        <div class="stat"><div class="v">1</div><div class="k" data-i18n="st_offline">Offline</div></div>
-      </div>
-      <div class="banner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        <span data-i18n="fleet_banner">Ramon's driver app linked on Mar 3, 2026</span>
+        <div class="stat"><div class="v on" id="st-active">0</div><div class="k" data-i18n="st_active">Active</div></div>
+        <div class="stat"><div class="v" id="st-idle">0</div><div class="k" data-i18n="st_idle">Idle</div></div>
+        <div class="stat"><div class="v" id="st-offline">0</div><div class="k" data-i18n="st_offline">Offline</div></div>
       </div>
 
       <div class="grouplabel" data-i18n="au_account">Operator account</div>
@@ -456,12 +451,12 @@
       <div class="pad">
         <div id="drivers-list"></div>
         <div class="field" style="margin-top:.6rem"><label data-i18n="d_add_id">Truck / Driver ID</label>
-          <input id="nd-id" placeholder="NBC-4521" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+          <input id="nd-id" placeholder="ABC-1234" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
         <div style="display:flex; gap:.5rem">
           <div class="field" style="flex:1"><label data-i18n="d_add_plate">Plaka</label>
-            <input id="nd-plate" placeholder="NBC 4521" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+            <input id="nd-plate" placeholder="ABC 1234" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
           <div class="field" style="flex:1"><label data-i18n="d_add_name">Pangalan</label>
-            <input id="nd-name" placeholder="Ramon V." autocomplete="off" spellcheck="false"></div>
+            <input id="nd-name" placeholder="Juan D." autocomplete="off" spellcheck="false"></div>
         </div>
         <button class="drv-btn go" style="margin-top:0" onclick="addDriver()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="d_add_btn">Add driver</span></button>
         <div class="demo-flag" style="padding:.7rem 0 .2rem; text-align:left" data-i18n="d_add_hint">Kailangan naka-Go live. Ang ID ang gagamitin ng driver sa phone nila.</div>
@@ -579,10 +574,10 @@
 <!-- ============ DRIVER APP ============ -->
 <div class="driverwrap">
   <header class="drv-top">
-    <div class="hi" id="drv-hi">Hi, Ramon 👋</div>
+    <div class="hi" id="drv-hi">FleetPulse</div>
     <div class="right">
       <button class="lang-btn on-ink" id="lang-drv" onclick="toggleLang()">FIL</button>
-      <div class="plate-badge">NBC 4521</div>
+      <div class="plate-badge" id="drv-plate" hidden></div>
     </div>
   </header>
 
@@ -601,37 +596,17 @@
         <div class="field"><label data-i18n="d_setup_url">Backend URL</label>
           <input id="drv-backend" placeholder="https://fleetpulse-api.xxx.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
         <div class="field"><label data-i18n="d_setup_id">Truck / Driver ID</label>
-          <input id="drv-id" value="NBC-4521" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+          <input id="drv-id" value="" placeholder="ABC-1234" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
         <button class="drv-btn go" style="margin-top:0" onclick="saveDriverSetup()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n="d_setup_save">Save &amp; send GPS</span></button>
         <div class="demo-flag" id="geo-status" style="padding:.6rem 0 .2rem; text-align:left"></div>
-      </div>
-
-      <div class="drv-label" data-i18n="d_curtrip">Current trip</div>
-      <div class="trip-card">
-        <div class="top"><span class="tno">Trip #1042</span><span class="pill moving" data-i18n="pill_enroute">En route</span></div>
-        <div class="trip-route">
-          <span class="node"><span class="d"></span><span class="txt">Manila</span></span>
-          <span class="track"></span>
-          <span class="node"><span class="d end"></span><span class="txt">Batangas</span></span>
-        </div>
-        <div class="trip-meta"><span><b>42 km</b> <span data-i18n="w_left">left</span></span><span><b>~48 min</b> ETA</span><span><b>68</b> km/h</span></div>
       </div>
 
       <div class="drv-label" data-i18n="d_quick">Quick updates</div>
       <button class="drv-btn go" onclick="toast(t('tst_arr'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="d_arrived">Arrived at destination</span></button>
       <button class="drv-btn" onclick="toast(t('tst_break'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a3 3 0 0 1 0 6h-1"/><path d="M3 8h14v5a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/></svg><span data-i18n="d_break">Taking a break</span></button>
 
-      <div class="drv-label" data-i18n="d_fromdisp">From dispatch</div>
-      <div class="drv-info tap" id="newTripCard" onclick="showDrv('newtrip')">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M15 17h-1V9h4l3 3v5h-2"/><circle cx="7.5" cy="17.5" r="1.9"/><circle cx="17.5" cy="17.5" r="1.9"/></svg></div>
-        <div class="bd"><div class="h" id="nt-title">New trip assigned · #1043</div><div class="d" id="nt-sub">Manila Depot → Subic · ETA 4:22 PM</div></div>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--fg-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      </div>
-      <div class="drv-info tap" onclick="showDrv('request')">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <div class="bd"><div class="h" data-i18n="d_photo_h">Dispatch requested a photo</div><div class="d" data-i18n="d_photo_d">Proof of delivery — you choose to send</div></div>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--fg-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      </div>
+      <div class="drv-label" data-i18n="d_team">Your team</div>
+      <div id="team-list-home"></div>
 
       <div class="drv-label" data-i18n="d_controls">Your controls</div>
       <div class="drv-info">
@@ -641,16 +616,10 @@
       <div class="demo-flag" data-i18n="demo_driver">Demo prototype · this is the driver's phone</div>
     </section>
 
-    <!-- DRIVER TRIP -->
-    <section class="drvview" data-drvview="trip">
-      <div class="view-head"><h2>Trip #1042</h2><p>Manila Depot → Batangas Port</p></div>
-      <div class="trip-card">
-        <div class="trip-route"><span class="node"><span class="d"></span><span class="txt">Manila</span></span><span class="track"></span><span class="node"><span class="d end"></span><span class="txt">Batangas</span></span></div>
-        <div class="trip-meta"><span><b>128 km</b> <span data-i18n="w_total">total</span></span><span><b>42 km</b> <span data-i18n="w_left">left</span></span><span><b>~48 min</b></span></div>
-      </div>
-      <div class="drv-label" data-i18n="d_stops">Route stops</div>
-      <div class="drv-info"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div><div class="bd"><div class="h">Manila Depot</div><div class="d" data-i18n="d_stop1">Departed 1:12 PM · loaded</div></div></div>
-      <div class="drv-info"><div class="ic" style="background:var(--surface-2);color:var(--fg-faint)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="bd"><div class="h">Batangas Port</div><div class="d">ETA 2:48 PM</div></div></div>
+    <!-- DRIVER TEAM (co-drivers) -->
+    <section class="drvview" data-drvview="team">
+      <div class="view-head"><h2 data-i18n="d_team">Your team</h2><p data-i18n="d_team_tab">Team</p></div>
+      <div id="team-list"></div>
     </section>
 
     <!-- DRIVER PHOTO REQUEST -->
@@ -698,7 +667,7 @@
 
   <nav class="drv-tabbar">
     <button class="tab active" data-drvtab="home" onclick="showDrv('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="dt_home">Home</span></button>
-    <button class="tab" data-drvtab="trip" onclick="showDrv('trip')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20 3 17V4l6 3 6-3 6 3v13l-6-3-6 3z"/></svg><span data-i18n="dt_trip">Trip</span></button>
+    <button class="tab" data-drvtab="team" onclick="showDrv('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5M21 20a6 6 0 0 0-5-5.9"/></svg><span data-i18n="d_team_tab">Team</span></button>
     <button class="tab danger" data-drvtab="help" onclick="showDrv('help')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span data-i18n="dt_help">Help</span></button>
   </nav>
 </div>
@@ -719,6 +688,7 @@
     alerts_h:{en:'Alerts',fil:'Alerto'}, alerts_p:{en:'Arrivals, idling, speed, and signal events',fil:'Mga pagdating, idle, bilis, at signal'},
     fleet_p:{en:'Ramon Villanueva · Manila–Batangas lane',fil:'Ramon Villanueva · ruta Manila–Batangas'},
     st_active:{en:'Active',fil:'Aktibo'}, st_idle:{en:'Idle',fil:'Idle'}, st_offline:{en:'Offline',fil:'Offline'},
+    fleet_title:{en:'Fleet',fil:'Fleet'}, fleet_sub:{en:'Your drivers and settings',fil:'Mga driver at settings mo'},
     fleet_banner:{en:"Ramon's driver app linked on Mar 3, 2026",fil:'Na-link ang driver app ni Ramon noong Mar 3, 2026'},
     g_loc:{en:'Location & trips',fil:'Lokasyon at biyahe'}, g_drv:{en:'Driver app',fil:'Driver app'}, g_trans:{en:'Transparency',fil:'Transparency'},
     s_live_h:{en:'Live location',fil:'Live location'}, s_live_d:{en:'Phone GPS shares position while on shift — works even with no load',fil:'Nagsha-share ng lokasyon ang phone GPS habang naka-shift — gumagana kahit walang kargada'},
@@ -769,7 +739,7 @@
     assign_btn:{en:'Assign to driver',fil:'I-assign sa driver'}, assign_demo:{en:'ETA is estimated from the route · sample data',fil:'Tinatantya ang ETA base sa ruta · sample data'},
     pb_km:{en:'Km',fil:'Km'}, pb_dur:{en:'Duration',fil:'Tagal'}, pb_avg:{en:'Avg km/h',fil:'Avg km/h'}, pb_timeline:{en:'Route timeline',fil:'Timeline ng ruta'}, today:{en:'Today',fil:'Ngayon'},
     // driver
-    d_hi:{en:'Hi, Ramon 👋',fil:'Kumusta, Ramon 👋'},
+    d_hi:{en:'Hi 👋',fil:'Kumusta 👋'},
     d_curtrip:{en:'Current trip',fil:'Kasalukuyang biyahe'}, d_quick:{en:'Quick updates',fil:'Mabilis na update'},
     d_setup:{en:'Dispatch connection',fil:'Koneksyon sa dispatch'}, d_setup_url:{en:'Backend URL',fil:'Backend URL'}, d_setup_id:{en:'Truck / Driver ID',fil:'Truck / Driver ID'}, d_setup_save:{en:'Save & send GPS',fil:'I-save at magpadala ng GPS'},
     geo_off:{en:'Enter the backend URL + ID, then turn on your shift to start sending GPS.',fil:'Ilagay ang backend URL + ID, tapos i-on ang shift para magsimulang magpadala ng GPS.'},
@@ -801,6 +771,9 @@
     shift_btn_end:{en:'End shift',fil:'Tapusin ang shift'}, shift_btn_start:{en:'Start shift',fil:'Simulan ang shift'},
     // toasts & misc
     live:{en:'Live',fil:'Live'}, snapshot:{en:'Snapshot',fil:'Snapshot'}, replay:{en:'▶ Replay route',fil:'▶ I-replay ang ruta'}, completed:{en:'Completed',fil:'Tapos'}, no_active:{en:'No active trips.',fil:'Walang aktibong biyahe.'},
+    no_done:{en:'No completed trips yet.',fil:'Wala pang tapos na biyahe.'}, no_alerts:{en:'No alerts yet. Events appear here once your drivers are active.',fil:'Wala pang alerto. Lalabas dito kapag aktibo na ang mga driver mo.'},
+    d_team:{en:'Your team',fil:'Mga kasama mo'}, d_team_tab:{en:'Team',fil:'Koponan'}, d_team_none:{en:'No co-drivers yet. Set your Truck/Driver ID and ask your operator to add your teammates.',fil:'Wala pang kasama. I-set ang Truck/Driver ID mo at pakiusapan ang operator na idagdag ang mga kasama mo.'},
+    d_team_you:{en:'You',fil:'Ikaw'}, d_moving:{en:'Moving',fil:'Gumagalaw'}, d_idle2:{en:'Idle',fil:'Nakahinto'}, d_off2:{en:'Offline',fil:'Offline'},
     tst_addtruck:{en:'Add a truck: your driver installs the FleetPulse Driver app and links the plate.',fil:'Magdagdag ng truck: i-install ng driver ang FleetPulse Driver app at i-link ang plaka.'},
     tst_msg:{en:'Message sent to ',fil:'Naipadala ang mensahe kay '}, tst_call:{en:'Calling ',fil:'Tinatawagan si '}, tst_savelog:{en:'Trip saved to log',fil:'Na-save ang biyahe sa log'},
     tst_locked:{en:"This protection can't be turned off — it keeps tracking fair and transparent.",fil:'Hindi pwedeng patayin ito — pinapanatili nitong patas at bukas ang tracking.'},
@@ -819,56 +792,11 @@
   function L(o){ return o ? (o[lang]||o.en) : ''; }
 
   // ===================== Data =====================
-  var trucks = [
-    { plate:'NBC', driver:'Ramon V.', color:'#18a865', status:'moving' },
-    { plate:'TXG', driver:'Jun C.', color:'#cf8613', status:'idle' },
-    { plate:'PLM', driver:'Mark R.', color:'#18a865', status:'arrived' },
-    { plate:'WYR', driver:'Dennis S.', color:'#949d92', status:'offline' }
-  ];
-
-  var feed = [
-    { plate:'NBC', full:'NBC 4521', driver:'Ramon Villanueva', color:'#18a865', live:true, status:'moving',
-      statusLabel:{en:'En route',fil:'Nasa byahe'}, pin:[250,210], addr:'SLEX · near Sta. Rosa',
-      meta:{en:'68 km/h · 42 km to Batangas Port',fil:'68 km/h · 42 km papuntang Batangas Port'},
-      headline:{en:'is heading to Batangas Port',fil:'papunta sa Batangas Port'},
-      detail:{en:'Departed Manila Depot at 1:12 PM on Trip #1042.',fil:'Umalis sa Manila Depot nang 1:12 PM · Trip #1042.'},
-      note:{en:"Sharing on during Ramon's shift",fil:'Naka-share ang lokasyon habang naka-shift si Ramon'},
-      time:{en:'2 minutes ago',fil:'2 min ang nakaraan'} },
-    { plate:'TXG', full:'TXG 8830', driver:'Jun Castro', color:'#cf8613', live:true, status:'idle',
-      statusLabel:{en:'Idle 25 min',fil:'Naka-idle 25 min'}, pin:[180,250], addr:'Alabang · Filinvest',
-      meta:{en:'Engine on · not moving since 12:47 PM',fil:'Nakaandar · hindi gumagalaw mula 12:47 PM'},
-      headline:{en:'has been idle for 25 minutes',fil:'25 minuto nang naka-idle'},
-      detail:{en:'Stopped near Alabang. Tap to message Jun and check in.',fil:'Nakahinto malapit sa Alabang. I-tap para i-message si Jun.'},
-      note:{en:"Sharing on during Jun's shift",fil:'Naka-share ang lokasyon habang naka-shift si Jun'},
-      time:{en:'8 minutes ago',fil:'8 min ang nakaraan'} },
-    { plate:'PLM', full:'PLM 1174', driver:'Mark Reyes', color:'#18a865', live:false, status:'arrived',
-      statusLabel:{en:'Arrived',fil:'Dumating'}, pin:[250,250], addr:'Clark Distribution Center',
-      meta:{en:'Inside depot geofence · unloading',fil:'Nasa loob ng depot geofence · nagba-baba'},
-      headline:{en:'arrived at Clark DC',fil:'dumating sa Clark DC'},
-      detail:{en:'Entered the depot geofence at 11:30 AM. Trip #1038 complete.',fil:'Pumasok sa depot geofence nang 11:30 AM. Tapos na ang Trip #1038.'},
-      note:{en:'Trip logged to history',fil:'Naitala ang biyahe sa history'},
-      time:{en:'1 hour ago',fil:'1 oras ang nakaraan'} }
-  ];
-
-  var notifs = [
-    { ic:'ok', icon:'<path d="M20 6 9 17l-5-5"/>', body:{en:'<b>PLM 1174</b> (Mark) arrived at <b>Clark DC</b>',fil:'Dumating ang <b>PLM 1174</b> (Mark) sa <b>Clark DC</b>'}, t:{en:'1 hr ago',fil:'1 oras'} },
-    { ic:'warn', icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', body:{en:'<b>TXG 8830</b> (Jun) idle for <b>25 min</b> near Alabang',fil:'<b>TXG 8830</b> (Jun) naka-idle nang <b>25 min</b> malapit sa Alabang'}, t:{en:'8 min ago',fil:'8 min'} },
-    { ic:'warn', icon:'<path d="M3 12h4l2-7 4 14 2-7h5"/>', body:{en:'<b>PLM 1174</b> hit <b>94 km/h</b> on SLEX',fil:'Umabot sa <b>94 km/h</b> ang <b>PLM 1174</b> sa SLEX'}, t:{en:'2 hr ago',fil:'2 oras'} },
-    { ic:'alert', icon:'<path d="M18.4 18.4A9 9 0 1 0 5.6 5.6"/><path d="M2 2l20 20"/>', body:{en:'<b>WYR 6093</b> (Dennis) signal lost · last seen 14 min ago',fil:'Nawalan ng signal ang <b>WYR 6093</b> (Dennis) · huling nakita 14 min ang nakaraan'}, t:{en:'14 min ago',fil:'14 min'} },
-    { ic:'ok', icon:'<path d="M12 2v6M12 2 9 5M12 2l3 3"/><circle cx="12" cy="14" r="7"/>', body:{en:'<b>Ramon</b> started shift · Trip #1042 assigned',fil:'Nag-simula ng shift si <b>Ramon</b> · na-assign ang Trip #1042'}, t:{en:'3 hr ago',fil:'3 oras'} }
-  ];
-
-  var activeTrips = [
-    { no:'#1042', truck:'NBC 4521', driver:'Ramon V.', from:'Manila', to:'Batangas', eta:'2:48 PM', status:'moving', labelKey:'pill_enroute' }
-  ];
-  var doneTrips = [
-    { no:'#1038', truck:'PLM 1174', driver:'Mark R.', from:'Manila', to:'Clark', km:95, dur:'2h 25m', avg:41, startMin:545, endMin:690,
-      path:'M40 250 C110 245 120 150 185 150 S305 120 365 55',
-      events:[ {h:{en:'Departed Manila Depot',fil:'Umalis sa Manila Depot'},t:'9:05 AM',k:''}, {h:{en:'NLEX · Balintawak',fil:'NLEX · Balintawak'},t:'9:40 AM',k:''}, {h:{en:'Idle 8 min · traffic at Sta. Ines',fil:'Idle 8 min · trapik sa Sta. Ines'},t:'10:15 AM',k:'idle'}, {h:{en:'Entered Clark geofence',fil:'Pumasok sa Clark geofence'},t:'11:02 AM',k:''}, {h:{en:'Arrived Clark DC · unloading',fil:'Dumating sa Clark DC · nagba-baba'},t:'11:30 AM',k:'end'} ] },
-    { no:'#1035', truck:'TXG 8830', driver:'Jun C.', from:'Manila', to:'Cavite', km:46, dur:'1h 10m', avg:39, startMin:420, endMin:490,
-      path:'M55 60 C120 85 150 200 225 210 S335 250 365 255',
-      events:[ {h:{en:'Departed Manila Depot',fil:'Umalis sa Manila Depot'},t:'7:00 AM',k:''}, {h:{en:'CAVITEX toll plaza',fil:'CAVITEX toll plaza'},t:'7:35 AM',k:''}, {h:{en:'Arrived Kawit drop-off',fil:'Dumating sa Kawit drop-off'},t:'8:10 AM',k:'end'} ] }
-  ];
+  var trucks = [];
+  var feed = [];
+  var notifs = [];
+  var activeTrips = [];
+  var doneTrips = [];
 
   var pinColor = { moving:'var(--accent)', arrived:'var(--accent)', idle:'var(--warn)', offline:'var(--fg-faint)', alert:'var(--alert)' };
 
@@ -935,7 +863,7 @@
       var c = map[n.ic] || map.ok;
       html += '<div class="notif"><div class="ic" style="background:'+c[0]+';color:'+c[1]+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+n.icon+'</svg></div><div class="bd">'+L(n.body)+'<div class="t">'+L(n.t)+'</div></div></div>';
     });
-    document.getElementById('notif-list').innerHTML = html;
+    document.getElementById('notif-list').innerHTML = html || '<div style="color:var(--fg-muted);font-size:.85rem;padding:1.4rem 1rem">'+t('no_alerts')+'</div>';
   }
 
   function renderTrips(){
@@ -955,7 +883,7 @@
         + '<div class="trip-route"><span class="node"><span class="d"></span><span class="txt">'+tr.from+'</span></span><span class="track" style="background:var(--accent)"></span><span class="node"><span class="d end"></span><span class="txt">'+tr.to+'</span></span></div>'
         + '<div class="trip-meta"><span style="color:var(--accent);font-weight:700">'+t('replay')+'</span></div></div>';
     });
-    document.getElementById('trips-done').innerHTML = d;
+    document.getElementById('trips-done').innerHTML = d || '<p style="color:var(--fg-muted);font-size:.85rem;margin:.2rem 0">'+t('no_done')+'</p>';
   }
 
   // ===================== ETA / assign =====================
@@ -1054,10 +982,39 @@
   function locked(){ toast(t('tst_locked')); }
 
   function setRole(role){ document.body.classList.toggle('driver', role==='driver'); document.getElementById('rs-op').classList.toggle('on', role==='operator'); document.getElementById('rs-drv').classList.toggle('on', role==='driver'); window.scrollTo(0,0); try{ localStorage.setItem('fp-role', role); }catch(e){}
-    if(role==='driver'){ document.body.classList.remove('show-auth'); if(onShift) startGeo(); else geoStatus('geo_offshift'); }
+    if(role==='driver'){ document.body.classList.remove('show-auth'); loadDriverTeam(); if(onShift) startGeo(); else geoStatus('geo_offshift'); }
     else { stopGeo(); if(!isAuthed() && !demoMode){ showAuth(); } } }
 
-  function showDrv(view){ document.querySelectorAll('.drvview').forEach(function(v){ v.classList.toggle('active', v.dataset.drvview===view); }); document.querySelectorAll('.drv-tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.drvtab===view); }); window.scrollTo(0,0); }
+  function showDrv(view){ document.querySelectorAll('.drvview').forEach(function(v){ v.classList.toggle('active', v.dataset.drvview===view); }); document.querySelectorAll('.drv-tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.drvtab===view); }); window.scrollTo(0,0); if(view==='team'||view==='home') loadDriverTeam(); }
+
+  // ---------- Co-drivers (team) ----------
+  function teamStatus(r){ if(!r.ts) return 'offline'; var age=Date.now()-r.ts; if(age>180000) return 'offline'; if(r.speed==null||r.speed<0.8) return 'idle'; return 'moving'; }
+  var teamColor={ moving:'#18a865', idle:'#cf8613', offline:'#949d92' };
+  function teamLabel(s){ return s==='moving'?t('d_moving'):s==='idle'?t('d_idle2'):t('d_off2'); }
+  function renderTeam(list){
+    var mine=(driverId||'').toUpperCase();
+    function rows(showEmpty){
+      if(!list.length) return showEmpty ? '<div class="dr-empty" style="padding:1rem 0">'+t('d_team_none')+'</div>' : '';
+      return list.map(function(r){
+        var st=teamStatus(r); var plate=r.plate||r.driverId; var short=(plate.split(' ')[0]||plate).slice(0,3).toUpperCase();
+        var you=(r.driverId||'').toUpperCase()===mine;
+        var sub=(r.lat!=null? r.lat.toFixed(3)+', '+r.lng.toFixed(3) : t('d_off2'));
+        return '<div class="dr-row"><div class="av-sm" style="background:'+teamColor[st]+'">'+esc(short)+'</div>'
+          +'<div class="bd"><div class="h">'+esc(plate)+(you?' · '+t('d_team_you'):(r.driverName?(' · '+esc(r.driverName)):''))+'</div><div class="d">'+esc(sub)+'</div></div>'
+          +'<span class="pill '+st+'">'+teamLabel(st)+'</span></div>';
+      }).join('');
+    }
+    var full=document.getElementById('team-list'); if(full) full.innerHTML=rows(true);
+    var home=document.getElementById('team-list-home'); if(home) home.innerHTML=rows(true);
+  }
+  function loadDriverTeam(){
+    if(!document.body.classList.contains('driver')) return;
+    var id=(driverId||'').trim(); if(!id || !API.baseUrl){ renderTeam([]); return; }
+    fetch(apiBase()+'/api/driver/fleet?driverId='+encodeURIComponent(id),{headers:{'Accept':'application/json'}})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(data){ renderTeam(data.team||[]); })
+      .catch(function(){ renderTeam([]); });
+  }
 
   var onShift = true;
   function setShiftUI(){
@@ -1081,8 +1038,9 @@
   // ===================== Driver browser GPS (PWA) =====================
   // Nagpapadala ng totoong lokasyon sa backend habang naka-shift ang driver.
   // Browser geolocation: gumagana habang bukas ang app (foreground).
-  var driverId='NBC-4521', geoWatch=null, geoActive=false;
+  var driverId='', geoWatch=null, geoActive=false;
   function geoStatus(key){ var el=document.getElementById('geo-status'); if(el) el.textContent=t(key); }
+  function updateDrvPlate(){ var el=document.getElementById('drv-plate'); if(!el) return; if(driverId){ el.textContent=driverId; el.hidden=false; } else { el.hidden=true; } }
   function saveDriverSetup(){
     var url=(document.getElementById('drv-backend').value||'').trim();
     var id=(document.getElementById('drv-id').value||'').trim().toUpperCase();
@@ -1091,6 +1049,8 @@
     if(id){ driverId=id; try{ localStorage.setItem('fp-driverid', id); }catch(e){} }
     toast(lang==='fil'?'Na-save ang setup':'Setup saved');
     if(onShift) startGeo(); else geoStatus('geo_nourl');
+    updateDrvPlate();
+    loadDriverTeam();
   }
   function sendGeoPing(pos){
     if(!API.baseUrl) return;
@@ -1195,9 +1155,11 @@
   var liveColor={ moving:'#18a865', arrived:'#18a865', idle:'#cf8613', offline:'#949d92' };
   var livePillKey={ moving:'pill_enroute', idle:'pill_idle', offline:'pill_offline' };
 
+  function setStats(a,i,o){ var ea=document.getElementById('st-active'),ei=document.getElementById('st-idle'),eo=document.getElementById('st-offline'); if(ea)ea.textContent=a; if(ei)ei.textContent=i; if(eo)eo.textContent=o; }
+
   // Alisin ang anumang demo/leftover na laman kapag live pero walang driver pa
   function clearLiveSurfaces(){
-    feed=[]; trucks=[]; renderTrucks(); renderFeed();
+    feed=[]; trucks=[]; renderTrucks(); renderFeed(); setStats(0,0,0);
     var sheet=document.getElementById('fleet-sheet-list');
     if(sheet) sheet.innerHTML='<div class="dr-empty" style="padding:.4rem 0">'+t('empty_fleet')+'</div>';
     var pins=document.getElementById('fullmap-pins'); if(pins) pins.innerHTML='';
@@ -1237,6 +1199,7 @@
       });
     });
     renderTrucks(); renderFeed();
+    var na=0,ni=0,no=0; rows.forEach(function(r){ var s=statusOf(r); if(s==='offline')no++; else if(s==='idle')ni++; else na++; }); setStats(na,ni,no);
 
     // map sheet list
     var sheet=document.getElementById('fleet-sheet-list');
@@ -1337,12 +1300,7 @@
   }
 
   // ===================== Manage drivers =====================
-  var sampleDrivers = [
-    { id:'NBC-4521', plate:'NBC 4521', driverName:'Ramon Villanueva' },
-    { id:'TXG-8830', plate:'TXG 8830', driverName:'Jun Castro' },
-    { id:'PLM-1174', plate:'PLM 1174', driverName:'Mark Reyes' },
-    { id:'WYR-6093', plate:'WYR 6093', driverName:'Dennis Santos' }
-  ];
+  var sampleDrivers = [];
   var driverCache = sampleDrivers.slice();
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1405,6 +1363,7 @@
   // Driver GPS setup (hiwalay sa operator auth)
   try{ var sd=localStorage.getItem('fp-driverid'); if(sd) driverId=sd; }catch(e){}
   (function(){ var du=document.getElementById('drv-backend'); if(du&&API.baseUrl) du.value=API.baseUrl; var di=document.getElementById('drv-id'); if(di) di.value=driverId; })();
+  updateDrvPlate();
   geoStatus(onShift?'geo_offshift':'geo_offshift');
 
   var savedRole='operator';
