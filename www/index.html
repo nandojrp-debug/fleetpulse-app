@@ -847,7 +847,9 @@
     chat_connect:{en:'Set your Backend URL and Truck/Driver ID on the Home tab to start chatting.',fil:'I-set ang Backend URL at Truck/Driver ID sa Home tab para makapag-chat.'},
     dt_chat:{en:'Chat',fil:'Chat'}, d_add_phone:{en:'Phone (for Call)',fil:'Numero (para sa Call)'},
     d_call_dispatch:{en:'Call dispatch',fil:'Tawagan ang dispatch'}, lbl_call:{en:'Call',fil:'Tawag'},
-    chat_you:{en:'You',fil:'Ikaw'}, chat_disp:{en:'Dispatch',fil:'Dispatch'}
+    chat_you:{en:'You',fil:'Ikaw'}, chat_disp:{en:'Dispatch',fil:'Dispatch'},
+    no_loc_yet:{en:'No GPS location yet for this driver.',fil:'Wala pang GPS na lokasyon ang driver na ito.'},
+    no_phone:{en:'No phone number saved for this driver.',fil:'Walang naka-save na numero ang driver na ito.'}
   };
   function t(k){ var s=STR[k]; return s ? (s[lang]||s.en) : k; }
   function L(o){ return o ? (o[lang]||o.en) : ''; }
@@ -904,9 +906,9 @@
         + '<div class="map-badge">'+(p.live?'<span class="live-dot"></span> '+t('live'):t('snapshot'))+'</div>'
         + '<div class="map-label"><span class="addr">'+p.addr+'</span><span class="meta">'+L(p.meta)+'</span></div></div>';
       html += '<div class="react-row">'
-        + '<button onclick="go(\'map\')" aria-label="Locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.2 8 12 8 12s8-6.8 8-12a8 8 0 0 0-8-8z"/></svg></button>'
-        + '<button onclick="toast(t(\'tst_msg\')+\''+p.driver+'\')" aria-label="Message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>'
-        + '<button onclick="toast(t(\'tst_call\')+\''+p.driver+'…\')" aria-label="Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></button>'
+        + '<button onclick="openMaps('+(p.lat!=null?p.lat:'null')+','+(p.lng!=null?p.lng:'null')+')" aria-label="Locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.2 8 12 8 12s8-6.8 8-12a8 8 0 0 0-8-8z"/></svg></button>'
+        + '<button onclick="go(\'chat\')" aria-label="Message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>'
+        + '<button onclick="callNum(\''+esc(p.phone)+'\')" aria-label="Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></button>'
         + '<span class="spacer"></span>'
         + '<button onclick="toast(t(\'tst_savelog\'))" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button></div>';
       html += '<div class="card-foot"><div class="line"><b>'+p.full+'</b> '+L(p.headline)+'</div>'
@@ -915,6 +917,16 @@
         + '<div class="time">'+L(p.time)+'</div></div></article>';
     });
     document.getElementById('view-home').innerHTML = html;
+  }
+
+  function openMaps(lat,lng){
+    if(lat==null||lng==null||isNaN(lat)||isNaN(lng)){ toast(t('no_loc_yet')); return; }
+    window.open('https://www.google.com/maps/search/?api=1&query='+lat+','+lng, '_blank');
+  }
+  function callNum(phone){
+    phone=(phone||'').trim();
+    if(!phone){ toast(t('no_phone')); return; }
+    window.location.href='tel:'+phone.replace(/[^0-9+]/g,'');
   }
 
   function renderNotifs(){
@@ -1346,6 +1358,7 @@
       feed.push({
         plate:shortPlate, full:plate, driver:drv, color:liveColor[st], live:(st!=='offline'),
         status:st, statusLabel:STR[livePillKey[st]],
+        lat:r.lat, lng:r.lng, phone:r.phone||'', driverId:r.driverId,
         pin:[Math.round(20+n.nx*360), Math.round(20+n.ny*280)],
         addr:r.lat.toFixed(4)+', '+r.lng.toFixed(4),
         meta:metaTxt, headline:head,
