@@ -185,6 +185,23 @@
   .dr-row .del:hover { background:var(--alert-soft); }
   .dr-row .del svg { width:18px; height:18px; display:block; }
   .dr-empty { font-size:.8rem; color:var(--fg-muted); padding:.3rem 0; }
+  .dr-row .call { border:none; background:var(--accent-soft); color:var(--accent); cursor:pointer; padding:.4rem; border-radius:9px; flex:0 0 auto; text-decoration:none; display:grid; place-items:center; }
+  .dr-row .call svg { width:18px; height:18px; display:block; }
+
+  /* Chat */
+  .chat-wrap { display:flex; flex-direction:column; height: calc(100vh - 54px - 88px); min-height:420px; }
+  .chat-msgs { flex:1; overflow-y:auto; padding:.8rem max(16px,env(safe-area-inset-left,0px)); display:flex; flex-direction:column; gap:.45rem; }
+  .msg { max-width:80%; padding:.5rem .72rem; border-radius:15px; font-size:.88rem; line-height:1.35; word-wrap:break-word; }
+  .msg .who { font-size:.66rem; font-weight:800; opacity:.75; margin-bottom:.12rem; }
+  .msg.them { align-self:flex-start; background:var(--surface-2); color:var(--fg); border-bottom-left-radius:5px; }
+  .msg.me { align-self:flex-end; background:var(--accent); color:var(--accent-ink); border-bottom-right-radius:5px; }
+  .msg .t { font-size:.6rem; opacity:.65; margin-top:.15rem; text-align:right; }
+  .chat-bar { display:flex; gap:.5rem; align-items:center; padding:.6rem max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); border-top:1px solid var(--border); background:var(--surface); }
+  .chat-bar input { flex:1; min-width:0; border:1px solid var(--border); border-radius:999px; padding:.65rem .95rem; font-family:var(--font-body); font-size:.9rem; background:var(--bg); color:var(--fg); }
+  .chat-bar input:focus { outline:none; border-color:var(--accent); }
+  .chat-bar button { border:none; background:var(--accent); color:var(--accent-ink); width:44px; height:44px; border-radius:50%; cursor:pointer; flex:0 0 auto; display:grid; place-items:center; }
+  .chat-bar button svg { width:20px; height:20px; }
+  .chat-empty { text-align:center; color:var(--fg-muted); font-size:.85rem; padding:2.4rem 1.5rem; margin:auto; }
 
   /* Connection status */
   .conn-status { display:flex; align-items:center; gap:.45rem; font-size:.75rem; font-weight:700;
@@ -378,6 +395,9 @@
     </div>
     <div class="topbar-actions">
       <button class="lang-btn" id="lang-op" onclick="toggleLang()">FIL</button>
+      <button class="icon-btn" onclick="go('chat')" aria-label="Chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>
+      </button>
       <button class="icon-btn" onclick="go('notifs')" aria-label="Alerts">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="dot"></span>
@@ -458,6 +478,8 @@
           <div class="field" style="flex:1"><label data-i18n="d_add_name">Pangalan</label>
             <input id="nd-name" placeholder="Juan D." autocomplete="off" spellcheck="false"></div>
         </div>
+        <div class="field"><label data-i18n="d_add_phone">Phone (para sa Call)</label>
+          <input id="nd-phone" type="tel" placeholder="+63 9XX XXX XXXX" autocomplete="off" spellcheck="false"></div>
         <button class="drv-btn go" style="margin-top:0" onclick="addDriver()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="d_add_btn">Add driver</span></button>
         <div class="demo-flag" style="padding:.7rem 0 .2rem; text-align:left" data-i18n="d_add_hint">Kailangan naka-Go live. Ang ID ang gagamitin ng driver sa phone nila.</div>
       </div>
@@ -558,6 +580,18 @@
       <div class="grouplabel" data-i18n="pb_timeline">Route timeline</div>
       <div class="timeline" id="pb-timeline"></div>
     </section>
+
+    <!-- CHAT (operator) -->
+    <section class="view" id="view-chat" data-view="chat">
+      <div class="view-head"><h2 data-i18n="chat_h">Dispatch chat</h2><p data-i18n="chat_sub">You and all your drivers</p></div>
+      <div class="chat-wrap" style="height:calc(100vh - 54px - 88px - 70px)">
+        <div class="chat-msgs" id="chat-msgs-op"></div>
+        <div class="chat-bar">
+          <input id="chat-input-op" data-i18n-ph="chat_ph_op" placeholder="Message your drivers…" onkeydown="if(event.key==='Enter')sendChat();">
+          <button onclick="sendChat()" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <nav class="tabbar">
@@ -605,6 +639,8 @@
       <button class="drv-btn go" onclick="toast(t('tst_arr'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="d_arrived">Arrived at destination</span></button>
       <button class="drv-btn" onclick="toast(t('tst_break'))"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a3 3 0 0 1 0 6h-1"/><path d="M3 8h14v5a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/></svg><span data-i18n="d_break">Taking a break</span></button>
 
+      <div id="dispatch-call"></div>
+
       <div class="drv-label" data-i18n="d_team">Your team</div>
       <div id="team-list-home"></div>
 
@@ -618,7 +654,11 @@
 
     <!-- DRIVER TEAM (co-drivers) -->
     <section class="drvview" data-drvview="team">
-      <div class="view-head"><h2 data-i18n="d_team">Your team</h2><p data-i18n="d_team_tab">Team</p></div>
+      <div class="view-head"><h2 data-i18n="d_team">Your team</h2><p data-i18n="d_team_sub">You and your co-drivers, live</p></div>
+      <div class="pb-map" id="team-map-wrap" style="border:1px solid var(--border);border-radius:16px;margin-bottom:.6rem">
+        <svg id="team-map" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+        <div class="map-badge" style="left:.6rem;top:.6rem;right:auto"><span class="live-dot"></span> <span data-i18n="live">Live</span></div>
+      </div>
       <div id="team-list"></div>
     </section>
 
@@ -663,11 +703,23 @@
         </div>
       </div>
     </section>
+
+    <!-- CHAT (driver) -->
+    <section class="drvview" data-drvview="chat">
+      <div class="chat-wrap" style="height:calc(100vh - 58px - 70px)">
+        <div class="chat-msgs" id="chat-msgs-drv"></div>
+        <div class="chat-bar">
+          <input id="chat-input-drv" data-i18n-ph="chat_ph_drv" placeholder="Message dispatch…" onkeydown="if(event.key==='Enter')sendChat();">
+          <button onclick="sendChat()" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <nav class="drv-tabbar">
     <button class="tab active" data-drvtab="home" onclick="showDrv('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="dt_home">Home</span></button>
     <button class="tab" data-drvtab="team" onclick="showDrv('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5M21 20a6 6 0 0 0-5-5.9"/></svg><span data-i18n="d_team_tab">Team</span></button>
+    <button class="tab" data-drvtab="chat" onclick="showDrv('chat')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg><span data-i18n="dt_chat">Chat</span></button>
     <button class="tab danger" data-drvtab="help" onclick="showDrv('help')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span data-i18n="dt_help">Help</span></button>
   </nav>
 </div>
@@ -774,6 +826,7 @@
     no_done:{en:'No completed trips yet.',fil:'Wala pang tapos na biyahe.'}, no_alerts:{en:'No alerts yet. Events appear here once your drivers are active.',fil:'Wala pang alerto. Lalabas dito kapag aktibo na ang mga driver mo.'},
     d_team:{en:'Your team',fil:'Mga kasama mo'}, d_team_tab:{en:'Team',fil:'Koponan'}, d_team_none:{en:'No co-drivers yet. Set your Truck/Driver ID and ask your operator to add your teammates.',fil:'Wala pang kasama. I-set ang Truck/Driver ID mo at pakiusapan ang operator na idagdag ang mga kasama mo.'},
     d_team_you:{en:'You',fil:'Ikaw'}, d_moving:{en:'Moving',fil:'Gumagalaw'}, d_idle2:{en:'Idle',fil:'Nakahinto'}, d_off2:{en:'Offline',fil:'Offline'},
+    d_team_sub:{en:'You and your co-drivers, live',fil:'Ikaw at mga kasama mo, live'}, team_noloc:{en:'No live locations yet',fil:'Walang live na lokasyon pa'},
     tst_addtruck:{en:'Add a truck: your driver installs the FleetPulse Driver app and links the plate.',fil:'Magdagdag ng truck: i-install ng driver ang FleetPulse Driver app at i-link ang plaka.'},
     tst_msg:{en:'Message sent to ',fil:'Naipadala ang mensahe kay '}, tst_call:{en:'Calling ',fil:'Tinatawagan si '}, tst_savelog:{en:'Trip saved to log',fil:'Na-save ang biyahe sa log'},
     tst_locked:{en:"This protection can't be turned off — it keeps tracking fair and transparent.",fil:'Hindi pwedeng patayin ito — pinapanatili nitong patas at bukas ang tracking.'},
@@ -786,7 +839,15 @@
     tst_photo_later:{en:'💬 Message sent: "Unloading now, photo in 5 min."',fil:'💬 Mensahe: "Nagba-baba na, photo in 5 min."'},
     tst_photo_dec:{en:'Declined. Dispatch just sees that you got the request.',fil:'Tinanggihan. Makikita lang ng dispatch na natanggap mo ang request.'},
     tst_accept:{en:'Trip accepted · navigation started 🚚',fil:'Tinanggap ang biyahe · nagsimula ang navigation 🚚'},
-    lbl_assigned:{en:'Assigned',fil:'Na-assign'}
+    lbl_assigned:{en:'Assigned',fil:'Na-assign'},
+    // chat + call
+    chat_h:{en:'Dispatch chat',fil:'Dispatch chat'}, chat_sub:{en:'You and all your drivers',fil:'Ikaw at lahat ng driver mo'},
+    chat_ph_op:{en:'Message your drivers…',fil:'Mag-message sa mga driver…'}, chat_ph_drv:{en:'Message dispatch…',fil:'Mag-message sa dispatch…'},
+    chat_empty:{en:'No messages yet. Say hello 👋',fil:'Wala pang mensahe. Mag-hello 👋'},
+    chat_connect:{en:'Set your Backend URL and Truck/Driver ID on the Home tab to start chatting.',fil:'I-set ang Backend URL at Truck/Driver ID sa Home tab para makapag-chat.'},
+    dt_chat:{en:'Chat',fil:'Chat'}, d_add_phone:{en:'Phone (for Call)',fil:'Numero (para sa Call)'},
+    d_call_dispatch:{en:'Call dispatch',fil:'Tawagan ang dispatch'}, lbl_call:{en:'Call',fil:'Tawag'},
+    chat_you:{en:'You',fil:'Ikaw'}, chat_disp:{en:'Dispatch',fil:'Dispatch'}
   };
   function t(k){ var s=STR[k]; return s ? (s[lang]||s.en) : k; }
   function L(o){ return o ? (o[lang]||o.en) : ''; }
@@ -976,6 +1037,7 @@
     document.querySelectorAll('.tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.tab===tab); });
     window.scrollTo(0,0);
     if(view==='fleet'||view==='assign'){ loadDrivers(); }
+    if(view==='chat'){ openChat(); } else { stopChat(); }
     if(['home','map','trips','notifs','fleet'].indexOf(view)>=0){ try{ localStorage.setItem('fp-view', view); }catch(e){} }
   }
   function flip(btn,key){ btn.classList.toggle('on'); toast(t(key) + (btn.classList.contains('on') ? t('tst_on') : t('tst_off'))); }
@@ -985,7 +1047,7 @@
     if(role==='driver'){ document.body.classList.remove('show-auth'); loadDriverTeam(); if(onShift) startGeo(); else geoStatus('geo_offshift'); }
     else { stopGeo(); if(!isAuthed() && !demoMode){ showAuth(); } } }
 
-  function showDrv(view){ document.querySelectorAll('.drvview').forEach(function(v){ v.classList.toggle('active', v.dataset.drvview===view); }); document.querySelectorAll('.drv-tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.drvtab===view); }); window.scrollTo(0,0); if(view==='team'||view==='home') loadDriverTeam(); }
+  function showDrv(view){ document.querySelectorAll('.drvview').forEach(function(v){ v.classList.toggle('active', v.dataset.drvview===view); }); document.querySelectorAll('.drv-tabbar .tab').forEach(function(x){ x.classList.toggle('active', x.dataset.drvtab===view); }); window.scrollTo(0,0); if(view==='team'||view==='home') loadDriverTeam(); if(view==='chat'){ openChat(); } else { stopChat(); } }
 
   // ---------- Co-drivers (team) ----------
   function teamStatus(r){ if(!r.ts) return 'offline'; var age=Date.now()-r.ts; if(age>180000) return 'offline'; if(r.speed==null||r.speed<0.8) return 'idle'; return 'moving'; }
@@ -999,21 +1061,115 @@
         var st=teamStatus(r); var plate=r.plate||r.driverId; var short=(plate.split(' ')[0]||plate).slice(0,3).toUpperCase();
         var you=(r.driverId||'').toUpperCase()===mine;
         var sub=(r.lat!=null? r.lat.toFixed(3)+', '+r.lng.toFixed(3) : t('d_off2'));
+        var call=(!you && r.phone) ? '<a class="call" href="tel:'+esc(r.phone)+'" title="Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></a>' : '';
         return '<div class="dr-row"><div class="av-sm" style="background:'+teamColor[st]+'">'+esc(short)+'</div>'
           +'<div class="bd"><div class="h">'+esc(plate)+(you?' · '+t('d_team_you'):(r.driverName?(' · '+esc(r.driverName)):''))+'</div><div class="d">'+esc(sub)+'</div></div>'
-          +'<span class="pill '+st+'">'+teamLabel(st)+'</span></div>';
+          +call+'<span class="pill '+st+'">'+teamLabel(st)+'</span></div>';
       }).join('');
     }
     var full=document.getElementById('team-list'); if(full) full.innerHTML=rows(true);
     var home=document.getElementById('team-list-home'); if(home) home.innerHTML=rows(true);
+    renderTeamMap(list);
+  }
+  function renderTeamMap(list){
+    var svg=document.getElementById('team-map'); if(!svg) return;
+    var withLoc=list.filter(function(r){ return r.lat!=null && r.lng!=null; });
+    var grid='<defs><pattern id="tmg" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M0 25H50 M25 0V50" stroke="var(--border)" stroke-width="1.3"/></pattern></defs>'
+      +'<rect width="400" height="300" fill="url(#tmg)"/>'
+      +'<path d="M-20 120 Q180 90 430 150" stroke="var(--accent)" stroke-width="8" opacity=".18" fill="none" stroke-linecap="round"/>';
+    if(!withLoc.length){ svg.innerHTML=grid+'<text x="200" y="150" text-anchor="middle" fill="var(--fg-faint)" font-size="13" font-family="sans-serif">'+t('team_noloc')+'</text>'; return; }
+    var proj=projectNorm(withLoc.map(function(r){ return { driverId:r.driverId, lat:r.lat, lng:r.lng }; }));
+    var mine=(driverId||'').toUpperCase();
+    var pins=withLoc.map(function(r){
+      var st=teamStatus(r); var n=proj[r.driverId]||{nx:0.5,ny:0.5};
+      var x=Math.round(20+n.nx*360), y=Math.round(20+n.ny*260);
+      var plate=r.plate||r.driverId; var lbl=(plate.split(' ')[0]||plate).slice(0,3).toUpperCase();
+      var you=(r.driverId||'').toUpperCase()===mine;
+      var ring=you?'<circle cx="'+x+'" cy="'+y+'" r="26" fill="none" stroke="'+teamColor[st]+'" stroke-width="2.5" opacity=".5"/>':'';
+      return ring+'<g><circle cx="'+x+'" cy="'+y+'" r="16" fill="'+teamColor[st]+'"/><circle cx="'+x+'" cy="'+y+'" r="16" fill="none" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+(y+5)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="sans-serif">'+lbl+'</text></g>';
+    }).join('');
+    svg.innerHTML=grid+pins;
   }
   function loadDriverTeam(){
     if(!document.body.classList.contains('driver')) return;
     var id=(driverId||'').trim(); if(!id || !API.baseUrl){ renderTeam([]); return; }
     fetch(apiBase()+'/api/driver/fleet?driverId='+encodeURIComponent(id),{headers:{'Accept':'application/json'}})
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-      .then(function(data){ renderTeam(data.team||[]); })
-      .catch(function(){ renderTeam([]); });
+      .then(function(data){ renderTeam(data.team||[]); renderDispatchCall(data.dispatch); })
+      .catch(function(){ renderTeam([]); renderDispatchCall(null); });
+  }
+  function renderDispatchCall(d){
+    var el=document.getElementById('dispatch-call'); if(!el) return;
+    if(d && d.phone){
+      el.innerHTML='<a class="drv-btn ink" style="margin-top:0;text-decoration:none" href="tel:'+esc(d.phone)+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>'+t('d_call_dispatch')+'</a>';
+    } else { el.innerHTML=''; }
+  }
+
+  // ===================== Chat (operator <-> drivers) =====================
+  var chatMsgs=[], chatSince=0, chatTimer=null, chatSeen={};
+  function chatIsDriver(){ return document.body.classList.contains('driver'); }
+  function chatBox(){ return document.getElementById(chatIsDriver()?'chat-msgs-drv':'chat-msgs-op'); }
+  function chatInputEl(){ return document.getElementById(chatIsDriver()?'chat-input-drv':'chat-input-op'); }
+  function chatReady(){
+    if(chatIsDriver()){ return !!(driverId && (driverId.trim())) && !!API.baseUrl; }
+    return isAuthed() && !!API.baseUrl;
+  }
+  function openChat(){
+    chatMsgs=[]; chatSince=0; chatSeen={};
+    var box=chatBox();
+    if(!chatReady()){ if(box) box.innerHTML='<div class="chat-empty">'+t('chat_connect')+'</div>'; stopChat(); return; }
+    if(box) box.innerHTML='<div class="chat-empty">'+t('chat_empty')+'</div>';
+    pollChat();
+    stopChat(); chatTimer=setInterval(pollChat, 4000);
+  }
+  function stopChat(){ if(chatTimer){ clearInterval(chatTimer); chatTimer=null; } }
+  function chatUrl(){
+    if(chatIsDriver()){ return apiBase()+'/api/driver/messages?driverId='+encodeURIComponent((driverId||'').trim())+'&since='+chatSince; }
+    return apiBase()+'/api/messages?since='+chatSince;
+  }
+  function pollChat(){
+    if(!chatReady()){ stopChat(); return; }
+    var opts = chatIsDriver() ? {headers:{'Accept':'application/json'}} : {headers:authHeaders({'Accept':'application/json'})};
+    fetch(chatUrl(), opts)
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(data){ mergeChat(data.messages||[]); })
+      .catch(function(){});
+  }
+  function mergeChat(list){
+    var added=false;
+    list.forEach(function(m){ var k=String(m.id); if(!chatSeen[k]){ chatSeen[k]=1; chatMsgs.push(m); added=true; if((m.ts||0)>chatSince) chatSince=m.ts||0; } });
+    if(added){ chatMsgs.sort(function(a,b){ return (a.ts||0)-(b.ts||0); }); renderChat(); }
+  }
+  function chatMine(m){
+    if(chatIsDriver()){ return m.role==='driver' && String(m.sender_id||'').toUpperCase()===String(driverId||'').toUpperCase(); }
+    return m.role==='operator';
+  }
+  function chatTime(ts){ try{ var d=new Date(ts); var h=d.getHours(), mm=('0'+d.getMinutes()).slice(-2); var ap=h<12?'AM':'PM'; var h12=h%12; if(h12===0)h12=12; return h12+':'+mm+' '+ap; }catch(e){ return ''; } }
+  function renderChat(){
+    var box=chatBox(); if(!box) return;
+    if(!chatMsgs.length){ box.innerHTML='<div class="chat-empty">'+t('chat_empty')+'</div>'; return; }
+    box.innerHTML=chatMsgs.map(function(m){
+      var mine=chatMine(m);
+      var who = m.role==='operator' ? t('chat_disp') : esc(m.sender||m.sender_id||'');
+      return '<div class="msg '+(mine?'me':'them')+'">'
+        + (mine?'':'<div class="who">'+who+'</div>')
+        + esc(m.text)
+        + '<div class="t">'+chatTime(m.ts)+'</div></div>';
+    }).join('');
+    box.scrollTop=box.scrollHeight;
+  }
+  function sendChat(){
+    var inp=chatInputEl(); if(!inp) return;
+    var txt=(inp.value||'').trim(); if(!txt) return;
+    if(!chatReady()){ toast(t('chat_connect')); return; }
+    inp.value='';
+    if(chatIsDriver()){
+      fetch(apiBase()+'/api/driver/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({driverId:(driverId||'').trim(),text:txt})})
+        .then(function(r){ return r.json(); }).then(function(){ pollChat(); }).catch(function(){ toast(t('chat_connect')); });
+    } else {
+      fetch(apiBase()+'/api/messages',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({text:txt})})
+        .then(function(r){ return r.json(); }).then(function(){ pollChat(); }).catch(function(){});
+    }
   }
 
   var onShift = true;
@@ -1321,8 +1477,9 @@
     el.innerHTML = list.map(function(d){
       var plate=(d.plate||d.id); var short=(plate.split(' ')[0]||plate).slice(0,3).toUpperCase();
       var del = live ? '<button class="del" title="Remove" onclick="deleteDriver(\''+esc(d.id).replace(/'/g,"\\'")+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>' : '';
+      var call = (d.phone) ? '<a class="call" href="tel:'+esc(d.phone)+'" title="Call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></a>' : '';
       return '<div class="dr-row"><div class="av-sm" style="background:#18a865">'+esc(short)+'</div>'
-        + '<div class="bd"><div class="h">'+esc(plate)+'</div><div class="d">'+esc(d.id)+(d.driverName?(' · '+esc(d.driverName)):'')+'</div></div>'+del+'</div>';
+        + '<div class="bd"><div class="h">'+esc(plate)+'</div><div class="d">'+esc(d.id)+(d.driverName?(' · '+esc(d.driverName)):'')+(d.phone?(' · '+esc(d.phone)):'')+'</div></div>'+call+del+'</div>';
     }).join('') + (live ? '' : '<div class="dr-empty" style="margin-top:.4rem">'+t('d_demo_note')+'</div>');
   }
 
@@ -1339,10 +1496,11 @@
     var id=(document.getElementById('nd-id').value||'').trim().toUpperCase();
     var plate=(document.getElementById('nd-plate').value||'').trim();
     var name=(document.getElementById('nd-name').value||'').trim();
+    var phone=(document.getElementById('nd-phone').value||'').trim();
     if(!id){ toast(t('d_add_need_id')); return; }
-    fetch(apiBase()+'/api/trucks',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:id,plate:plate||id,driverName:name})})
+    fetch(apiBase()+'/api/trucks',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:id,plate:plate||id,driverName:name,phone:phone})})
       .then(function(r){ if(r.status===401){ handle401(); throw new Error('401'); } return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; }); })
-      .then(function(){ document.getElementById('nd-id').value=''; document.getElementById('nd-plate').value=''; document.getElementById('nd-name').value=''; toast(t('d_added')); loadDrivers(); })
+      .then(function(){ document.getElementById('nd-id').value=''; document.getElementById('nd-plate').value=''; document.getElementById('nd-name').value=''; document.getElementById('nd-phone').value=''; toast(t('d_added')); loadDrivers(); })
       .catch(function(e){ if(String(e).indexOf('401')<0) toast(String(e.message||e).replace('Error: ','')); });
   }
 
@@ -1364,6 +1522,7 @@
   try{ var sd=localStorage.getItem('fp-driverid'); if(sd) driverId=sd; }catch(e){}
   (function(){ var du=document.getElementById('drv-backend'); if(du&&API.baseUrl) du.value=API.baseUrl; var di=document.getElementById('drv-id'); if(di) di.value=driverId; })();
   updateDrvPlate();
+  setInterval(function(){ if(document.body.classList.contains('driver')) loadDriverTeam(); }, 15000);
   geoStatus(onShift?'geo_offshift':'geo_offshift');
 
   var savedRole='operator';
